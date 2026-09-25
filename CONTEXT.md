@@ -15,8 +15,9 @@ _Avoid_: Simulation, template, case
 **Exercise**:
 One run of a scenario with a particular crew at a particular time. Owns what
 happened during that run and the record of it afterwards. Moves through setup,
-running and ended; its join code stays live throughout, so a position can be taken
-or retaken at any point.
+running and ended; its join code admits crew members until it ends, so a position
+can be taken or retaken at any point before then. Once it has ended, nobody new comes
+in and no position changes hands.
 _Avoid_: Session, simulation, run, game
 
 **Position**:

@@ -15,3 +15,7 @@ The duplication between a scenario's injects and an exercise's is deliberate; do
 normalise it away into a foreign key. It also makes an improvised inject an ordinary
 member of the exercise's inject set rather than a special case, since the exercise
 owns its injects either way.
+
+Positions are snapshotted the same way, for the same reason, but when the exercise is
+created rather than when it starts: crew members take positions during setup, so the
+exercise must own its positions before anyone can join it.

@@ -20,5 +20,6 @@ The first officer of a deployment is bootstrapped from configuration; existing
 officers add the rest. Do not collapse the allowlist into "any authenticated user" —
 it is what keeps deployments isolated from one another, and the shared identity
 provider cannot do that job. Join codes must be unguessable enough that a running
-exercise cannot be walked into, and they stay live for the whole exercise so that a
-position can be retaken.
+exercise cannot be walked into, and they stay live until the exercise ends so that a
+position can be retaken. An ended exercise admits nobody: its code answers exactly
+as an unknown code would.

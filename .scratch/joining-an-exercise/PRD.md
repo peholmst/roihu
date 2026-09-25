@@ -61,17 +61,18 @@ one, and writes its join code and join link to the log.
 25. As a crew member, I want to keep my position when my phone has been idle for a long time, so that being busy on the radio does not cost me my position.
 26. As a crew member, I want to change position myself, so that I can fix a wrong pick without the officer's help.
 27. As a crew member, I want the position I leave to become free, so that someone else can take it.
-28. As a crew member, I want to keep my position when the exercise ends, so that my phone is still ready for the debrief.
-29. As a crew member, I want a position screen that tells me which position I hold, so that I know my phone is set up correctly.
-30. As a crew member, I want the position screen to show the exercise's state and update it live, so that I can see when the exercise starts and ends.
-31. As a crew member, I want the position screen to say where my injects will appear, so that I know what to watch.
-32. As a crew member, I want the interface in my browser's language when it is Finnish, Swedish or English, so that it is right from the first screen.
-33. As a crew member, I want the interface in the deployment's default language when my browser prefers another language, so that I get the station's language rather than something arbitrary.
-34. As a crew member, I want to switch the interface language on the join screen and the position screen, so that I can read it in the language I prefer.
-35. As a crew member, I want my language choice remembered on this device, so that I do not have to choose again after a reload.
-36. As a crew member, I want position names and call signs shown exactly as the scenario wrote them, whatever my interface language, so that they match what is said on the radio.
-37. As a developer, I want a development-only seeder that creates an exercise and logs its join code and join link, so that I can try joining without an officer side.
-38. As a developer, I want the seeded exercise to use a real station's positions, so that the picker is tried against realistic call signs.
+28. As a crew member, I want to keep my position when the exercise ends, so that my phone does not suddenly throw me out.
+29. As a training officer, I want an ended exercise to admit nobody, so that its crew is fixed once the exercise is over.
+30. As a crew member, I want a position screen that tells me which position I hold, so that I know my phone is set up correctly.
+31. As a crew member, I want the position screen to show the exercise's state and update it live, so that I can see when the exercise starts and ends.
+32. As a crew member, I want the position screen to say where my injects will appear, so that I know what to watch.
+33. As a crew member, I want the interface in my browser's language when it is Finnish, Swedish or English, so that it is right from the first screen.
+34. As a crew member, I want the interface in the deployment's default language when my browser prefers another language, so that I get the station's language rather than something arbitrary.
+35. As a crew member, I want to switch the interface language on the join screen and the position screen, so that I can read it in the language I prefer.
+36. As a crew member, I want my language choice remembered on this device, so that I do not have to choose again after a reload.
+37. As a crew member, I want position names and call signs shown exactly as the scenario wrote them, whatever my interface language, so that they match what is said on the radio.
+38. As a developer, I want a development-only seeder that creates an exercise and logs its join code and join link, so that I can try joining without an officer side.
+39. As a developer, I want the seeded exercise to use a real station's positions, so that the picker is tried against realistic call signs.
 
 ## Implementation Decisions
 
@@ -88,8 +89,8 @@ one, and writes its join code and join link to the log.
 - 8 characters from the Crockford base32 alphabet (0–9 and A–Z without I, L, O, U), shown as two groups of four, `K7QX-M2P9`, which gives about 40 bits of entropy.
 - Generated with a cryptographically secure random source, and redrawn on collision.
 - Input normalisation: upper-case, remove hyphens and whitespace, map O→0 and I/L→1. Anything that is not 8 valid characters after normalisation is rejected as malformed before any lookup.
-- Unknown codes and malformed codes that reach the server give one identical result. No rate limiting in this slice; the entropy is the protection.
-- Codes stay valid in every exercise state. Retiring codes is out of scope.
+- Unknown codes, malformed codes that reach the server, and codes of ended exercises give one identical result. No rate limiting in this slice; the entropy is the protection.
+- Codes admit crew members while the exercise is in setup or running. Once it has ended, taking, taking over and changing position are all refused.
 
 **Crew-joining application service**
 
@@ -101,7 +102,7 @@ This deep module owns every rule above the views. Its operations, in domain term
 - Resolve a holder token back to its exercise and position, or report that it no longer holds anything (taken over or released).
 - Publish changes to holdings and to exercise state to subscribers of an exercise, so that views can update live.
 
-Only a take-over or a change of position releases a holding. There is no presence detection or timeout, and the exercise's state never releases one.
+Only a take-over or a change of position releases a holding. There is no presence detection or timeout, and the exercise ending does not release one: holders stay on their position screen, but can no longer change position.
 
 **Live updates**
 
@@ -133,13 +134,13 @@ Only a take-over or a change of position releases a holding. There is no presenc
 - Good tests exercise external behaviour through the highest available seam: the public operations of the crew-joining service, and the views as a user sees them. They don't assert on tables, jOOQ queries or component internals.
 - **Crew-joining service tests** run against a real PostgreSQL started by Testcontainers (a new test dependency), with the real Flyway migrations applied. They cover:
   - code normalisation through lookup: case, hyphens, spaces, O/0, I/L/1
-  - the identical result for unknown and malformed codes
+  - the identical result for unknown, malformed and ended-exercise codes
   - positions returned in order with the correct free/taken state, and without the scenario name
   - taking a free position
   - taking a held position reporting a take-over instead of succeeding
   - take-over invalidating the previous token
   - change of position freeing the position
-  - holdings surviving every exercise state
+  - holdings surviving the exercise ending, while an ended exercise refuses lookup by code, taking, taking over and changing position
   - two concurrent takes of one position producing exactly one holder
 - **View tests** use `browserless-test-spring`. They cover:
   - the join screen: pre-filled from the route, malformed and unknown codes
@@ -157,7 +158,6 @@ Only a take-over or a change of position releases a holding. There is no presenc
 - Injects, reveals, reads, the timeline and the debrief. The position screen only reserves space for them.
 - Crew member names or any roster of who holds which position.
 - Rate limiting or other brute-force protection for join codes.
-- Retiring join codes after an exercise has ended.
 - Presence detection, idle timeouts, or officer-initiated release of a position.
 - Running more than one application node.
 
