@@ -21,50 +21,67 @@ src
 │       │   └── ui
 │       │       ├── MainLayout.java
 │       │       └── ViewTitle.java
-│       ├── examplefeature
-│       │   ├── ui
-│       │   │   └── TaskListView.java
-│       │   ├── Task.java
-│       │   ├── TaskRepository.java
-│       │   └── TaskService.java                
-│       └── Application.java     
+│       └── Application.java
 ├── main/resources
 │   ├── META-INF
 │   │   └── resources
 │   │       ├── icons
-│   │       │   └── clipboard-check.svg
 │   │       ├── styles.css
 │   │       └── view-title.css
-│   └── application.properties 
+│   ├── db/migration          Flyway migrations; the source of truth for the schema
+│   └── application.properties
 └── test/java
     └── [application package]
-        └── examplefeature
-            ├── ui
-            │   └── TaskListViewTest.java
-            └── TaskServiceTest.java                 
 ```
 
 The main entry point into the application is `Application.java`. This class contains the `main()` method that starts up 
 the Spring Boot application.
 
 The project follows a *feature-based package structure*, organizing code by *functional units* rather than traditional 
-architectural layers. It includes two feature packages: `base` and `examplefeature`.
+architectural layers. It currently has one such package, `base`.
 
 * The `base` package contains classes meant for reuse across different features, either through composition or 
   inheritance. You can use them as-is, tweak them to your needs, or remove them.
-* The `examplefeature` package is an example feature package that demonstrates the structure. It represents a 
-  *self-contained unit of functionality*, including UI components, business logic, data access, and an integration test.
-  Once you create your own features, *you'll remove this package*.
+* Feature packages sit beside `base`, each a *self-contained unit of functionality* including UI components,
+  business logic, data access and tests. The generated `examplefeature` package has been removed; the domain this
+  application is being built around is defined in [CONTEXT.md](CONTEXT.md).
+* The jOOQ classes generated from the Flyway migrations live in `[application package].db.generated` and are
+  committed to version control. They are never edited by hand.
 
 
 ## Starting in Development Mode
 
-To start the application in development mode, import it into your IDE and run the `Application` class. 
-You can also start the application from the command line by running: 
+Start PostgreSQL and Keycloak first, then the application through the dev loop:
 
 ```bash
-./mvnw
+docker compose up -d
+.vaadin/vaadin-dev start
 ```
+
+The application serves on <http://localhost:8080> and Keycloak on <http://localhost:8081>
+(admin/admin). Do **not** start the application with `./mvnw`, `mvn spring-boot:run` or an
+IDE run configuration: the dev loop daemon owns the application's process and a second
+launcher fights it for port 8080. See
+[ADR-0009](docs/adr/0009-compose-for-dependencies-app-on-the-host.md).
+
+After editing sources, make the change live with:
+
+```bash
+.vaadin/vaadin-dev apply
+```
+
+### Changing the database schema
+
+The schema is owned by Flyway migrations in `src/main/resources/db/migration`, and the jOOQ
+classes generated from them are committed. After adding or changing a migration, regenerate
+and commit both:
+
+```bash
+docker compose up -d postgres
+./mvnw -Pcodegen generate-sources
+```
+
+See [ADR-0008](docs/adr/0008-flyway-owns-the-schema.md).
 
 ## Building for Production
 

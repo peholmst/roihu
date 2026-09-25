@@ -12,10 +12,19 @@ classes in means an ordinary build, an IDE import and a CI run need nothing but
 Maven, and the diff of a schema change shows up in review alongside the migration
 that caused it.
 
-Generation applies the migrations to a throwaway PostgreSQL container and reads the
-real catalog, so every PostgreSQL-specific type, constraint and index is reflected
-exactly rather than through a SQL parser's approximation. Docker is therefore required
-to regenerate, but not to build, test or run.
+Generation cleans a disposable `tabletop_codegen` database in the Compose PostgreSQL,
+re-applies every migration into it, and reads the real catalog — so every
+PostgreSQL-specific type, constraint and index is reflected exactly rather than
+through a SQL parser's approximation, and the generated classes reflect the migrations
+as a whole rather than whatever a developer's database happens to hold. Docker is
+therefore required to regenerate, but not to build, test or run.
+
+Testcontainers was the first choice, through
+`testcontainers-jooq-codegen-maven-plugin`, so that generation needed nothing running.
+Its latest release (0.0.4) cannot negotiate with Docker 29, failing with an empty
+`/info` response, so generation goes through the Compose PostgreSQL that local
+development already runs. Maven never speaks to Docker, which is also why the Docker
+version stops mattering.
 
 ## Consequences
 

@@ -1,0 +1,42 @@
+# Local development dependencies. The Vaadin application itself is NOT here on
+# purpose: the dev loop daemon owns its process, and a second launcher would fight
+# it for port 8080. Start the application with `.vaadin/vaadin-dev start`.
+# See docs/adr/0009-compose-for-dependencies-app-on-the-host.md.
+
+name: tabletop-app
+
+services:
+  postgres:
+    image: postgres:18-alpine
+    environment:
+      POSTGRES_DB: tabletop
+      POSTGRES_USER: tabletop
+      POSTGRES_PASSWORD: tabletop
+    ports:
+      - "5432:5432"
+    volumes:
+      # PostgreSQL 18+ wants the whole directory mounted, not the data subdirectory,
+      # so that pg_upgrade can work across a mount boundary.
+      - postgres-data:/var/lib/postgresql
+      # Creates the codegen database on first initialisation of the volume.
+      - ./docker/postgres:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U tabletop -d tabletop"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.7
+    command: ["start-dev", "--import-realm"]
+    environment:
+      KC_BOOTSTRAP_ADMIN_USERNAME: admin
+      KC_BOOTSTRAP_ADMIN_PASSWORD: admin
+    # 8081 on the host, because the application owns 8080.
+    ports:
+      - "8081:8080"
+    volumes:
+      - ./docker/keycloak:/opt/keycloak/data/import:ro
+
+volumes:
+  postgres-data:

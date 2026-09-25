@@ -1,0 +1,40 @@
+{
+  "realm": "tabletop",
+  "enabled": true,
+  "displayName": "Tabletop Exercise (development)",
+  "loginTheme": "keycloak",
+  "internationalizationEnabled": true,
+  "supportedLocales": ["fi", "sv", "en"],
+  "defaultLocale": "en",
+  "clients": [
+    {
+      "clientId": "tabletop-app",
+      "name": "Tabletop Exercise",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "secret": "dev-only-secret",
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": false,
+      "redirectUris": ["http://localhost:8080/*"],
+      "webOrigins": ["http://localhost:8080"],
+      "attributes": {
+        "post.logout.redirect.uris": "http://localhost:8080/*"
+      }
+    }
+  ],
+  "users": [
+    {
+      "username": "anna",
+      "enabled": true,
+      "emailVerified": true,
+      "email": "anna@example.invalid",
+      "firstName": "Anna",
+      "lastName": "Virtanen",
+      "credentials": [
+        { "type": "password", "value": "anna", "temporary": false }
+      ]
+    }
+  ]
+}
