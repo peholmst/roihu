@@ -64,6 +64,10 @@ IDE run configuration: the dev loop daemon owns the application's process and a 
 launcher fights it for port 8080. See
 [ADR-0009](docs/adr/0009-compose-for-dependencies-app-on-the-host.md).
 
+Local runs use the `dev` Spring profile by default, which seeds an exercise and logs its join
+code and join link (look for `Seeded exercise` in `target/devloop/app.log`). Tests run under
+`test` and production under `prod`, so neither ever seeds anything.
+
 After editing sources, make the change live with:
 
 ```bash
