@@ -35,8 +35,15 @@ _Avoid_: Player, trainee, student, participant, user
 **Training Officer**:
 The person who runs the exercise. Sole author of scenarios and injects, and the
 only one who can reveal one. Acts as the simulation engine; the app automates
-none of their judgement.
+none of their judgement. Signs in through an external identity provider, and is
+admitted only if their deployment also lists them.
 _Avoid_: Instructor, facilitator, game master, admin
+
+**Join Code**:
+The short code that admits someone to an exercise as a crew member. The only thing a
+crew member needs, since they have no account, and it grants nothing outside the one
+exercise it belongs to.
+_Avoid_: Invite code, PIN, password, token
 
 **Reveal**:
 The act of giving one position access to one inject at a point in time. A reveal
@@ -71,6 +78,13 @@ The short name an officer gives an inject. Always visible to the officer and in 
 timeline; visible to a crew member, with its number, only once they have opened the
 inject, so that an unopened inject announces nothing but its own arrival.
 _Avoid_: Title, headline, subject, name
+
+**Prepared Language**:
+The language a scenario's prepared injects were written in — Finnish, Swedish or
+English. A hint, for browsing the library and for the join screen, never a guarantee:
+an improvised inject may be in any language. Unrelated to the language the
+application's own text is rendered in, which each viewer chooses independently.
+_Avoid_: Content language, scenario language, locale, translation
 
 **Improvised Inject**:
 An inject the officer writes during a running exercise, in response to what is

@@ -2,6 +2,13 @@
 
 - [ ] TODO Replace or update this README with instructions relevant to your application
 
+## Requirements
+
+The user interface must be available in Finnish, Swedish and English. Inject content is
+written in a single language by the training officer and is never translated — see
+[ADR-0006](docs/adr/0006-the-ui-is-translated-content-is-not.md). The domain language is
+defined in [CONTEXT.md](CONTEXT.md), and the decisions behind it in [docs/adr/](docs/adr/).
+
 ## Project Structure
 
 This project has the following structure:
