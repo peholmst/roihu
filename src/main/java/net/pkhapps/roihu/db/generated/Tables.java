@@ -6,6 +6,7 @@ package net.pkhapps.roihu.db.generated;
 
 import net.pkhapps.roihu.db.generated.tables.Exercise;
 import net.pkhapps.roihu.db.generated.tables.ExercisePosition;
+import net.pkhapps.roihu.db.generated.tables.Holding;
 import net.pkhapps.roihu.db.generated.tables.Scenario;
 import net.pkhapps.roihu.db.generated.tables.ScenarioPosition;
 
@@ -25,6 +26,11 @@ public class Tables {
      * The table <code>public.exercise_position</code>.
      */
     public static final ExercisePosition EXERCISE_POSITION = ExercisePosition.EXERCISE_POSITION;
+
+    /**
+     * The table <code>public.holding</code>.
+     */
+    public static final Holding HOLDING = Holding.HOLDING;
 
     /**
      * The table <code>public.scenario</code>.

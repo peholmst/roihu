@@ -14,6 +14,8 @@ import java.util.Optional;
 import java.util.Random;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.tuple;
+import static org.assertj.core.api.InstanceOfAssertFactories.type;
 
 @IntegrationTest
 class CrewJoiningTest {
@@ -39,10 +41,12 @@ class CrewJoiningTest {
 
         assertThat(exercise.state()).isEqualTo(ExerciseState.SETUP);
         assertThat(exercise.preparedLanguage()).isEqualTo(PreparedLanguage.FINNISH);
-        assertThat(exercise.positions()).containsExactly(
-                new ExercisePosition("Officer", Optional.of("RVSP911")),
-                new ExercisePosition("Pump operator", Optional.of("RVS911K")),
-                new ExercisePosition("Safety officer", Optional.empty()));
+        assertThat(exercise.positions())
+                .extracting(ExercisePosition::name, ExercisePosition::callSign)
+                .containsExactly(
+                        tuple("Officer", Optional.of("RVSP911")),
+                        tuple("Pump operator", Optional.of("RVS911K")),
+                        tuple("Safety officer", Optional.empty()));
     }
 
     @Test
@@ -93,6 +97,88 @@ class CrewJoiningTest {
         assertThat(second).isNotEqualTo(first);
         assertThat(crewJoining.findExercise(first.toString())).isPresent();
         assertThat(crewJoining.findExercise(second.toString())).isPresent();
+    }
+
+    @Test
+    void takingAFreePositionGivesATokenThatFindsItAgain() {
+        var joinCode = exercises.createFrom(aScenario()).toString();
+        var officer = crewJoining.findExercise(joinCode).orElseThrow().positions().getFirst();
+
+        var result = crewJoining.take(joinCode, officer.id());
+
+        var token = assertThat(result).asInstanceOf(type(TakeResult.Taken.class)).actual().token();
+        var holding = crewJoining.findHolding(token).orElseThrow();
+        assertThat(holding.position().id()).isEqualTo(officer.id());
+        assertThat(holding.position().name()).isEqualTo("Officer");
+        assertThat(holding.state()).isEqualTo(ExerciseState.SETUP);
+    }
+
+    @Test
+    void theExerciseShowsWhichPositionsAreTaken() {
+        var joinCode = exercises.createFrom(twoPositions()).toString();
+        var officer = crewJoining.findExercise(joinCode).orElseThrow().positions().getFirst();
+
+        crewJoining.take(joinCode, officer.id());
+
+        assertThat(crewJoining.findExercise(joinCode).orElseThrow().positions())
+                .extracting(ExercisePosition::name, ExercisePosition::taken)
+                .containsExactly(tuple("Officer", true), tuple("Pump operator", false));
+    }
+
+    @Test
+    void takingATakenPositionReportsItAndLeavesTheHolderInPlace() {
+        var joinCode = exercises.createFrom(aScenario()).toString();
+        var officer = crewJoining.findExercise(joinCode).orElseThrow().positions().getFirst();
+        var holder = ((TakeResult.Taken) crewJoining.take(joinCode, officer.id())).token();
+
+        var result = crewJoining.take(joinCode, officer.id());
+
+        assertThat(result).isInstanceOf(TakeResult.AlreadyTaken.class);
+        assertThat(crewJoining.findHolding(holder)).isPresent();
+    }
+
+    @Test
+    void changingPositionFreesItAndTheTokenNoLongerHoldsAnything() {
+        var joinCode = exercises.createFrom(aScenario()).toString();
+        var officer = crewJoining.findExercise(joinCode).orElseThrow().positions().getFirst();
+        var holder = ((TakeResult.Taken) crewJoining.take(joinCode, officer.id())).token();
+
+        assertThat(crewJoining.changePosition(holder)).isTrue();
+
+        assertThat(crewJoining.findHolding(holder)).isEmpty();
+        assertThat(crewJoining.findExercise(joinCode).orElseThrow().positions().getFirst().taken()).isFalse();
+    }
+
+    @Test
+    void onceTheExerciseHasEndedNoPositionChangesHandsButHoldersKeepTheirs() {
+        var joinCode = exercises.createFrom(twoPositions());
+        var positions = crewJoining.findExercise(joinCode.toString()).orElseThrow().positions();
+        var holder = ((TakeResult.Taken) crewJoining.take(joinCode.toString(), positions.get(0).id())).token();
+
+        exercises.end(joinCode);
+
+        assertThat(crewJoining.take(joinCode.toString(), positions.get(1).id()))
+                .isInstanceOf(TakeResult.NotJoinable.class);
+        assertThat(crewJoining.changePosition(holder)).isFalse();
+        assertThat(crewJoining.findHolding(holder)).get()
+                .extracting(Holding::state).isEqualTo(ExerciseState.ENDED);
+    }
+
+    @Test
+    void aPositionCanOnlyBeTakenWithTheCodeOfItsOwnExercise() {
+        var ours = exercises.createFrom(aScenario()).toString();
+        var theirs = exercises.createFrom(aScenario()).toString();
+        var theirOfficer = crewJoining.findExercise(theirs).orElseThrow().positions().getFirst();
+
+        assertThat(crewJoining.take(ours, theirOfficer.id())).isInstanceOf(TakeResult.NotJoinable.class);
+        assertThat(crewJoining.take("ZZZZ-ZZZZ", theirOfficer.id())).isInstanceOf(TakeResult.NotJoinable.class);
+        assertThat(crewJoining.findExercise(theirs).orElseThrow().positions().getFirst().taken()).isFalse();
+    }
+
+    private ScenarioId twoPositions() {
+        return scenarios.create("Warehouse fire", PreparedLanguage.FINNISH, List.of(
+                new ScenarioPosition("Officer", Optional.of("RVSP911")),
+                new ScenarioPosition("Pump operator", Optional.of("RVS911K"))));
     }
 
     private ScenarioId aScenario() {

@@ -9,6 +9,7 @@ import java.util.List;
 
 import net.pkhapps.roihu.db.generated.tables.Exercise;
 import net.pkhapps.roihu.db.generated.tables.ExercisePosition;
+import net.pkhapps.roihu.db.generated.tables.Holding;
 import net.pkhapps.roihu.db.generated.tables.Scenario;
 import net.pkhapps.roihu.db.generated.tables.ScenarioPosition;
 
@@ -42,6 +43,11 @@ public class Public extends SchemaImpl {
     public final ExercisePosition EXERCISE_POSITION = ExercisePosition.EXERCISE_POSITION;
 
     /**
+     * The table <code>public.holding</code>.
+     */
+    public final Holding HOLDING = Holding.HOLDING;
+
+    /**
      * The table <code>public.scenario</code>.
      */
     public final Scenario SCENARIO = Scenario.SCENARIO;
@@ -69,6 +75,7 @@ public class Public extends SchemaImpl {
         return Arrays.asList(
             Exercise.EXERCISE,
             ExercisePosition.EXERCISE_POSITION,
+            Holding.HOLDING,
             Scenario.SCENARIO,
             ScenarioPosition.SCENARIO_POSITION
         );

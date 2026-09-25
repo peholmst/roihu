@@ -1,7 +1,9 @@
 package net.pkhapps.roihu.exercise.ui;
 
 import com.vaadin.browserless.SpringBrowserlessTest;
+import com.vaadin.flow.component.button.Button;
 import net.pkhapps.roihu.IntegrationTest;
+import net.pkhapps.roihu.exercise.CrewJoining;
 import net.pkhapps.roihu.exercise.Exercises;
 import net.pkhapps.roihu.exercise.JoinCode;
 import net.pkhapps.roihu.scenario.PreparedLanguage;
@@ -47,6 +49,19 @@ class PositionPickerViewTest extends SpringBrowserlessTest {
                 .contains("Injects are in Swedish")
                 .contains("Not started yet")
                 .doesNotContain("Warehouse fire");
+    }
+
+    @Test
+    void takenPositionsAreMarkedAndCannotBeTaken(@Autowired CrewJoining crewJoining) {
+        var joinCode = anExercise();
+        var officer = crewJoining.findExercise(joinCode.toString()).orElseThrow().positions().getFirst();
+        crewJoining.take(joinCode.toString(), officer.id());
+
+        var picker = navigate("join/" + joinCode + "/positions", PositionPickerView.class);
+
+        assertThat(test(find(Button.class).withText("RVSP911 · Officer").single()).isUsable()).isFalse();
+        assertThat(test(find(Button.class).withText("RVS911K · Pump operator").single()).isUsable()).isTrue();
+        assertThat(picker.getElement().getTextRecursively()).containsSubsequence("RVSP911 · Officer", "Taken");
     }
 
     @Test

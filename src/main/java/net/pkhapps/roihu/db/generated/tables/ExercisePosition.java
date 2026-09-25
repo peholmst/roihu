@@ -12,6 +12,7 @@ import java.util.UUID;
 import net.pkhapps.roihu.db.generated.Keys;
 import net.pkhapps.roihu.db.generated.Public;
 import net.pkhapps.roihu.db.generated.tables.Exercise.ExercisePath;
+import net.pkhapps.roihu.db.generated.tables.Holding.HoldingPath;
 import net.pkhapps.roihu.db.generated.tables.records.ExercisePositionRecord;
 
 import org.jooq.Condition;
@@ -175,6 +176,19 @@ public class ExercisePosition extends TableImpl<ExercisePositionRecord> {
             _exercise = new ExercisePath(this, Keys.EXERCISE_POSITION__EXERCISE_POSITION_EXERCISE_ID_FKEY, null);
 
         return _exercise;
+    }
+
+    private transient HoldingPath _holding;
+
+    /**
+     * Get the implicit to-many join path to the <code>public.holding</code>
+     * table
+     */
+    public HoldingPath holding() {
+        if (_holding == null)
+            _holding = new HoldingPath(this, null, Keys.HOLDING__HOLDING_EXERCISE_POSITION_ID_FKEY.getInverseKey());
+
+        return _holding;
     }
 
     @Override

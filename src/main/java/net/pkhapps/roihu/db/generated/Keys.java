@@ -6,10 +6,12 @@ package net.pkhapps.roihu.db.generated;
 
 import net.pkhapps.roihu.db.generated.tables.Exercise;
 import net.pkhapps.roihu.db.generated.tables.ExercisePosition;
+import net.pkhapps.roihu.db.generated.tables.Holding;
 import net.pkhapps.roihu.db.generated.tables.Scenario;
 import net.pkhapps.roihu.db.generated.tables.ScenarioPosition;
 import net.pkhapps.roihu.db.generated.tables.records.ExercisePositionRecord;
 import net.pkhapps.roihu.db.generated.tables.records.ExerciseRecord;
+import net.pkhapps.roihu.db.generated.tables.records.HoldingRecord;
 import net.pkhapps.roihu.db.generated.tables.records.ScenarioPositionRecord;
 import net.pkhapps.roihu.db.generated.tables.records.ScenarioRecord;
 
@@ -36,6 +38,8 @@ public class Keys {
     public static final UniqueKey<ExerciseRecord> EXERCISE_PKEY = Internal.createUniqueKey(Exercise.EXERCISE, DSL.name("exercise_pkey"), new TableField[] { Exercise.EXERCISE.ID }, true);
     public static final UniqueKey<ExercisePositionRecord> EXERCISE_POSITION_EXERCISE_ID_ORDINAL_KEY = Internal.createUniqueKey(ExercisePosition.EXERCISE_POSITION, DSL.name("exercise_position_exercise_id_ordinal_key"), new TableField[] { ExercisePosition.EXERCISE_POSITION.EXERCISE_ID, ExercisePosition.EXERCISE_POSITION.ORDINAL }, true);
     public static final UniqueKey<ExercisePositionRecord> EXERCISE_POSITION_PKEY = Internal.createUniqueKey(ExercisePosition.EXERCISE_POSITION, DSL.name("exercise_position_pkey"), new TableField[] { ExercisePosition.EXERCISE_POSITION.ID }, true);
+    public static final UniqueKey<HoldingRecord> HOLDING_PKEY = Internal.createUniqueKey(Holding.HOLDING, DSL.name("holding_pkey"), new TableField[] { Holding.HOLDING.EXERCISE_POSITION_ID }, true);
+    public static final UniqueKey<HoldingRecord> HOLDING_TOKEN_HASH_KEY = Internal.createUniqueKey(Holding.HOLDING, DSL.name("holding_token_hash_key"), new TableField[] { Holding.HOLDING.TOKEN_HASH }, true);
     public static final UniqueKey<ScenarioRecord> SCENARIO_PKEY = Internal.createUniqueKey(Scenario.SCENARIO, DSL.name("scenario_pkey"), new TableField[] { Scenario.SCENARIO.ID }, true);
     public static final UniqueKey<ScenarioPositionRecord> SCENARIO_POSITION_PKEY = Internal.createUniqueKey(ScenarioPosition.SCENARIO_POSITION, DSL.name("scenario_position_pkey"), new TableField[] { ScenarioPosition.SCENARIO_POSITION.SCENARIO_ID, ScenarioPosition.SCENARIO_POSITION.ORDINAL }, true);
 
@@ -45,5 +49,6 @@ public class Keys {
 
     public static final ForeignKey<ExerciseRecord, ScenarioRecord> EXERCISE__EXERCISE_SCENARIO_ID_FKEY = Internal.createForeignKey(Exercise.EXERCISE, DSL.name("exercise_scenario_id_fkey"), new TableField[] { Exercise.EXERCISE.SCENARIO_ID }, Keys.SCENARIO_PKEY, new TableField[] { Scenario.SCENARIO.ID }, true, ForeignKeyRule.NO_ACTION, ForeignKeyRule.NO_ACTION);
     public static final ForeignKey<ExercisePositionRecord, ExerciseRecord> EXERCISE_POSITION__EXERCISE_POSITION_EXERCISE_ID_FKEY = Internal.createForeignKey(ExercisePosition.EXERCISE_POSITION, DSL.name("exercise_position_exercise_id_fkey"), new TableField[] { ExercisePosition.EXERCISE_POSITION.EXERCISE_ID }, Keys.EXERCISE_PKEY, new TableField[] { Exercise.EXERCISE.ID }, true, ForeignKeyRule.CASCADE, ForeignKeyRule.NO_ACTION);
+    public static final ForeignKey<HoldingRecord, ExercisePositionRecord> HOLDING__HOLDING_EXERCISE_POSITION_ID_FKEY = Internal.createForeignKey(Holding.HOLDING, DSL.name("holding_exercise_position_id_fkey"), new TableField[] { Holding.HOLDING.EXERCISE_POSITION_ID }, Keys.EXERCISE_POSITION_PKEY, new TableField[] { ExercisePosition.EXERCISE_POSITION.ID }, true, ForeignKeyRule.CASCADE, ForeignKeyRule.NO_ACTION);
     public static final ForeignKey<ScenarioPositionRecord, ScenarioRecord> SCENARIO_POSITION__SCENARIO_POSITION_SCENARIO_ID_FKEY = Internal.createForeignKey(ScenarioPosition.SCENARIO_POSITION, DSL.name("scenario_position_scenario_id_fkey"), new TableField[] { ScenarioPosition.SCENARIO_POSITION.SCENARIO_ID }, Keys.SCENARIO_PKEY, new TableField[] { Scenario.SCENARIO.ID }, true, ForeignKeyRule.CASCADE, ForeignKeyRule.NO_ACTION);
 }

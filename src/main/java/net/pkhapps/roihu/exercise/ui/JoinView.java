@@ -48,6 +48,14 @@ public class JoinView extends Composite<VerticalLayout> implements BeforeEnterOb
 
     @Override
     public void beforeEnter(BeforeEnterEvent event) {
+        var heldHere = event.getRouteParameters().get("code")
+                .map(link -> URLDecoder.decode(link, StandardCharsets.UTF_8))
+                .flatMap(JoinCode::parse)
+                .filter(joinCode -> HolderTokens.holding(joinCode, crewJoining).isPresent());
+        if (heldHere.isPresent()) {
+            event.forwardTo(PositionView.class, new RouteParameters("code", heldHere.get().toString()));
+            return;
+        }
         event.getRouteParameters().get("code")
                 .map(link -> URLDecoder.decode(link, StandardCharsets.UTF_8))
                 .map(typed -> JoinCode.parse(typed).map(JoinCode::toString).orElse(typed))
@@ -58,6 +66,9 @@ public class JoinView extends Composite<VerticalLayout> implements BeforeEnterOb
         var joinCode = JoinCode.parse(code.getValue());
         if (joinCode.isEmpty()) {
             showError("join.malformed");
+        } else if (HolderTokens.holding(joinCode.get(), crewJoining).isPresent()) {
+            getUI().ifPresent(ui -> ui.navigate(PositionView.class,
+                    new RouteParameters("code", joinCode.get().toString())));
         } else if (crewJoining.findExercise(code.getValue()).isEmpty()) {
             showError("join.unknown");
         } else {
