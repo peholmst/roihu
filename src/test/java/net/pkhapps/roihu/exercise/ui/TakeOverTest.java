@@ -64,21 +64,6 @@ class TakeOverTest {
     }
 
     @Test
-    void theDisplacedDeviceReturnsToThePickerWhenItTriesToChangePosition() {
-        var joinCode = anExercise();
-        var displaced = app.newUser().newWindow();
-        var newDevice = app.newUser().newWindow();
-        takePumpOperator(displaced, joinCode);
-
-        takeOverPumpOperator(newDevice, joinCode);
-
-        displaced.test(displaced.find(Button.class).withText("Change position").single()).click();
-        assertThat(displaced.getCurrentView()).isInstanceOf(PositionPickerView.class);
-        assertThat(displaced.getCurrentView().getElement().getTextRecursively())
-                .contains("Your position was taken over on another device");
-    }
-
-    @Test
     void theMessageIsShownOnceAndTheDeviceCanTakeAPositionAgain() {
         var joinCode = anExercise();
         var displaced = app.newUser().newWindow();

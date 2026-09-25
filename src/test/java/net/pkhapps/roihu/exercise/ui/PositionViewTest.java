@@ -3,8 +3,12 @@ package net.pkhapps.roihu.exercise.ui;
 import com.vaadin.browserless.SpringBrowserlessTest;
 import com.vaadin.browserless.mocks.MockRequest;
 import com.vaadin.browserless.mocks.MockResponse;
+import com.vaadin.flow.component.Component;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.textfield.TextField;
+import com.vaadin.flow.internal.CurrentInstance;
+import com.vaadin.flow.server.VaadinRequest;
+import com.vaadin.flow.server.VaadinResponse;
 import com.vaadin.flow.server.VaadinService;
 import com.vaadin.flow.server.VaadinServletRequest;
 import com.vaadin.flow.server.VaadinServletResponse;
@@ -14,6 +18,7 @@ import jakarta.servlet.ServletRequestWrapper;
 import jakarta.servlet.ServletResponse;
 import jakarta.servlet.ServletResponseWrapper;
 import net.pkhapps.roihu.IntegrationTest;
+import net.pkhapps.roihu.exercise.CrewJoining;
 import net.pkhapps.roihu.exercise.Exercises;
 import net.pkhapps.roihu.exercise.JoinCode;
 import net.pkhapps.roihu.scenario.PreparedLanguage;
@@ -107,6 +112,41 @@ class PositionViewTest extends SpringBrowserlessTest {
     }
 
     @Test
+    void aHolderWhoCameBackThroughTheCookieIsReturnedToThePickerAsSoonAsTheirPositionIsTakenOver(
+            @Autowired CrewJoining crewJoining) {
+        var joinCode = anExercise();
+        navigate("join/" + joinCode + "/positions", PositionPickerView.class);
+        test(find(Button.class).withText("RVS911K · Pump operator").single()).click();
+        reopenTheBrowser();
+        var position = navigate("join/" + joinCode, PositionView.class);
+        var pumpOperator = crewJoining.findExercise(joinCode.toString()).orElseThrow().positions().get(1);
+
+        crewJoining.takeOver(joinCode.toString(), pumpOperator.id());
+
+        receivePush(position);
+        assertThat(getCurrentView()).isInstanceOf(PositionPickerView.class);
+        assertThat(getCurrentView().getElement().getTextRecursively())
+                .contains("Your position was taken over on another device");
+    }
+
+    @Test
+    void thePositionScreenShowsTheExerciseEndingAsSoonAsItEnds() {
+        var joinCode = anExercise();
+        navigate("join/" + joinCode + "/positions", PositionPickerView.class);
+        test(find(Button.class).withText("RVS911K · Pump operator").single()).click();
+        var position = (PositionView) getCurrentView();
+
+        exercises.end(joinCode);
+
+        receivePush(position);
+        assertThat(getCurrentView().getElement().getTextRecursively())
+                .contains("RVS911K · Pump operator")
+                .contains("Exercise ended")
+                .doesNotContain("Not started yet");
+        assertThat(find(Button.class).withText("Change position").all()).isEmpty();
+    }
+
+    @Test
     void onceTheExerciseHasEndedTheHolderKeepsThePositionButCannotChangeIt() {
         var joinCode = anExercise();
         navigate("join/" + joinCode + "/positions", PositionPickerView.class);
@@ -132,6 +172,22 @@ class PositionViewTest extends SpringBrowserlessTest {
         test(find(TextField.class).single()).setValue(joinCode.toString());
         test(find(Button.class).withText("Join").single()).click();
         assertThat(getCurrentView()).isInstanceOf(PositionView.class);
+    }
+
+    /** Runs what the server pushed while no request was being handled. */
+    private static void receivePush(Component view) {
+        var ui = view.getUI().orElseThrow();
+        var session = ui.getSession();
+        var request = CurrentInstance.get(VaadinRequest.class);
+        var response = CurrentInstance.get(VaadinResponse.class);
+        CurrentInstance.set(VaadinRequest.class, null);
+        CurrentInstance.set(VaadinResponse.class, null);
+        try {
+            session.getService().runPendingAccessTasks(session);
+        } finally {
+            CurrentInstance.set(VaadinRequest.class, request);
+            CurrentInstance.set(VaadinResponse.class, response);
+        }
     }
 
     /** Starts a new session that carries only the cookies the browser was given. */

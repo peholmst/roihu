@@ -9,6 +9,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.security.SecureRandom;
 import java.util.Optional;
+import java.util.UUID;
 
 import static net.pkhapps.roihu.db.generated.Tables.*;
 
@@ -21,10 +22,21 @@ public class CrewJoining {
             net.pkhapps.roihu.db.generated.enums.ExerciseState.ended;
 
     private final DSLContext db;
+    private final ExerciseChanges changes;
     private final SecureRandom random = new SecureRandom();
 
-    CrewJoining(DSLContext db) {
+    CrewJoining(DSLContext db, ExerciseChanges changes) {
         this.db = db;
+        this.changes = changes;
+    }
+
+    /**
+     * Calls {@code onChange} whenever a position of the exercise is taken, taken over or
+     * released, or the exercise changes state. It may be called from any thread, and only says
+     * that something changed: read the exercise again to find out what.
+     */
+    public Subscription subscribe(JoinCode joinCode, Runnable onChange) {
+        return changes.subscribe(joinCode, onChange);
     }
 
     /**
@@ -71,6 +83,7 @@ public class CrewJoining {
                 .onConflict(HOLDING.EXERCISE_POSITION_ID).doNothing()
                 .execute();
         if (inserted == 1) {
+            changes.publish(joinCode.get());
             return new TakeResult.Taken(token);
         }
         return db.fetchExists(EXERCISE_POSITION, joinable)
@@ -97,7 +110,11 @@ public class CrewJoining {
                 .onConflict(HOLDING.EXERCISE_POSITION_ID).doUpdate()
                 .set(HOLDING.TOKEN_HASH, token.hash())
                 .execute();
-        return taken == 1 ? new TakeResult.Taken(token) : new TakeResult.NotJoinable();
+        if (taken == 0) {
+            return new TakeResult.NotJoinable();
+        }
+        changes.publish(joinCode.get());
+        return new TakeResult.Taken(token);
     }
 
     private static Condition joinablePosition(JoinCode joinCode, PositionId position) {
@@ -114,12 +131,24 @@ public class CrewJoining {
      */
     @Transactional
     public boolean changePosition(HolderToken token) {
-        return db.deleteFrom(HOLDING)
+        var released = db.deleteFrom(HOLDING)
                 .where(HOLDING.TOKEN_HASH.eq(token.hash()))
                 .and(HOLDING.EXERCISE_POSITION_ID.in(DSL.select(EXERCISE_POSITION.ID)
                         .from(EXERCISE_POSITION).join(EXERCISE).on(EXERCISE.ID.eq(EXERCISE_POSITION.EXERCISE_ID))
                         .where(EXERCISE.STATE.ne(STORED_ENDED))))
-                .execute() == 1;
+                .returning(HOLDING.EXERCISE_POSITION_ID)
+                .fetchOptional(HOLDING.EXERCISE_POSITION_ID);
+        released.ifPresent(position -> changes.publish(joinCodeOf(position)));
+        return released.isPresent();
+    }
+
+    private JoinCode joinCodeOf(UUID position) {
+        return db.select(EXERCISE.JOIN_CODE)
+                .from(EXERCISE).join(EXERCISE_POSITION).on(EXERCISE_POSITION.EXERCISE_ID.eq(EXERCISE.ID))
+                .where(EXERCISE_POSITION.ID.eq(position))
+                .fetchOptional(EXERCISE.JOIN_CODE)
+                .flatMap(JoinCode::parse)
+                .orElseThrow();
     }
 
     /** Finds the position a token holds. A holding outlives the exercise ending. */

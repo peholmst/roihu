@@ -1,6 +1,7 @@
 package net.pkhapps.roihu.exercise.ui;
 
 import com.vaadin.flow.component.Composite;
+import com.vaadin.flow.component.DetachEvent;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.confirmdialog.ConfirmDialog;
 import com.vaadin.flow.component.html.H1;
@@ -9,6 +10,8 @@ import com.vaadin.flow.component.html.Paragraph;
 import com.vaadin.flow.component.html.Span;
 import com.vaadin.flow.component.html.UnorderedList;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
+import com.vaadin.flow.router.AfterNavigationEvent;
+import com.vaadin.flow.router.AfterNavigationObserver;
 import com.vaadin.flow.router.BeforeEnterEvent;
 import com.vaadin.flow.router.BeforeEnterObserver;
 import com.vaadin.flow.router.Route;
@@ -18,6 +21,7 @@ import net.pkhapps.roihu.exercise.CrewJoining;
 import net.pkhapps.roihu.exercise.ExercisePosition;
 import net.pkhapps.roihu.exercise.JoinCode;
 import net.pkhapps.roihu.exercise.JoinableExercise;
+import net.pkhapps.roihu.exercise.Subscription;
 import net.pkhapps.roihu.exercise.TakeResult;
 
 
@@ -28,7 +32,8 @@ import net.pkhapps.roihu.exercise.TakeResult;
  */
 @Route(value = "join/:code/positions", autoLayout = false)
 @AnonymousAllowed
-public class PositionPickerView extends Composite<VerticalLayout> implements BeforeEnterObserver {
+public class PositionPickerView extends Composite<VerticalLayout>
+        implements BeforeEnterObserver, AfterNavigationObserver {
 
     private final CrewJoining crewJoining;
 
@@ -37,6 +42,8 @@ public class PositionPickerView extends Composite<VerticalLayout> implements Bef
     }
 
     private JoinCode joinCode;
+    private boolean takenOver;
+    private Subscription subscription;
 
     @Override
     public void beforeEnter(BeforeEnterEvent event) {
@@ -57,10 +64,42 @@ public class PositionPickerView extends Composite<VerticalLayout> implements Bef
             return;
         }
         joinCode = parsed.get();
-        show(exercise.get(), takenOver.isPresent());
+        this.takenOver = takenOver.isPresent();
+        show(exercise.get());
     }
 
-    private void show(JoinableExercise exercise, boolean takenOver) {
+    /**
+     * Follows the exercise shown. After every navigation here, not on attach: a navigation to
+     * another exercise's screen reuses this one without attaching it again.
+     */
+    @Override
+    public void afterNavigation(AfterNavigationEvent event) {
+        var ui = getUI().orElseThrow();
+        stopFollowing();
+        subscription = crewJoining.subscribe(joinCode, () -> ui.access(this::showAsItIsNow));
+        // A change committed after the screen was read but before this subscription was not heard.
+        ui.access(this::showAsItIsNow);
+    }
+
+    @Override
+    protected void onDetach(DetachEvent detachEvent) {
+        stopFollowing();
+    }
+
+    private void stopFollowing() {
+        if (subscription != null) {
+            subscription.cancel();
+            subscription = null;
+        }
+    }
+
+    /** Once the exercise has ended, it admits nobody, so there is nothing left to choose. */
+    private void showAsItIsNow() {
+        crewJoining.findExercise(joinCode.toString()).ifPresentOrElse(this::show,
+                () -> getUI().ifPresent(ui -> ui.navigate(JoinView.class)));
+    }
+
+    private void show(JoinableExercise exercise) {
         var positions = new UnorderedList();
         exercise.positions().forEach(position -> positions.add(positionItem(position)));
         getContent().removeAll();

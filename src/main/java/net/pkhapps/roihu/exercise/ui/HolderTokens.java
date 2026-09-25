@@ -39,10 +39,16 @@ final class HolderTokens {
         if (request == null || request.getCookies() == null) {
             return Optional.empty();
         }
-        return Arrays.stream(request.getCookies())
+        var fromCookie = Arrays.stream(request.getCookies())
                 .filter(cookie -> cookie.getName().equals(name(joinCode)))
                 .findFirst()
                 .flatMap(cookie -> HolderToken.parse(cookie.getValue()));
+        // Kept in the session too, for what is pushed to the browser: no request carries a
+        // cookie then.
+        if (session != null) {
+            fromCookie.ifPresent(token -> session.setAttribute(name(joinCode), token));
+        }
+        return fromCookie;
     }
 
     /** The position this browser holds in the exercise, if it still holds one. */
@@ -62,14 +68,22 @@ final class HolderTokens {
         setCookie(joinCode, "", Duration.ZERO);
     }
 
+    /**
+     * Sets the cookie on the current response. Without one, when the change is pushed to the
+     * browser, the cookie is left as it is: the session speaks for it until it expires.
+     */
     private static void setCookie(JoinCode joinCode, String value, Duration lifetime) {
+        var response = VaadinService.getCurrentResponse();
+        if (response == null) {
+            return;
+        }
         var cookie = new Cookie(name(joinCode), value);
         cookie.setPath("/");
         cookie.setHttpOnly(true);
         cookie.setSecure(VaadinService.getCurrentRequest().isSecure());
         cookie.setAttribute("SameSite", "Lax");
         cookie.setMaxAge((int) lifetime.toSeconds());
-        VaadinService.getCurrentResponse().addCookie(cookie);
+        response.addCookie(cookie);
     }
 
     /** What the session keeps for an exercise once this browser holds no position in it. */

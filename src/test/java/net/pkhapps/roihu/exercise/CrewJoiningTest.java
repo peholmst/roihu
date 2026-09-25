@@ -17,6 +17,7 @@ import java.util.Random;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CyclicBarrier;
 import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.tuple;
@@ -92,9 +93,9 @@ class CrewJoiningTest {
     }
 
     @Test
-    void aJoinCodeAlreadyInUseIsDrawnAgain(@Autowired DSLContext db) {
+    void aJoinCodeAlreadyInUseIsDrawnAgain(@Autowired DSLContext db, @Autowired ExerciseChanges changes) {
         var scenario = aScenario();
-        var sameSeedEveryTime = new Exercises(db, () -> new Random(347));
+        var sameSeedEveryTime = new Exercises(db, changes, () -> new Random(347));
 
         var first = sameSeedEveryTime.createFrom(scenario);
         var second = sameSeedEveryTime.createFrom(scenario);
@@ -222,6 +223,54 @@ class CrewJoiningTest {
         assertThat(crewJoining.take("ZZZZ-ZZZZ", theirOfficer.id())).isInstanceOf(TakeResult.NotJoinable.class);
         assertThat(crewJoining.takeOver(ours, theirOfficer.id())).isInstanceOf(TakeResult.NotJoinable.class);
         assertThat(crewJoining.findExercise(theirs).orElseThrow().positions().getFirst().taken()).isFalse();
+    }
+
+    @Test
+    void followersOfAnExerciseHearOfEveryChangeToItAndOnlyToIt() {
+        var joinCode = exercises.createFrom(twoPositions());
+        var other = exercises.createFrom(aScenario());
+        var positions = crewJoining.findExercise(joinCode.toString()).orElseThrow().positions();
+        var heard = new AtomicInteger();
+        var heardOfOther = new AtomicInteger();
+        crewJoining.subscribe(joinCode, heard::incrementAndGet);
+        crewJoining.subscribe(other, heardOfOther::incrementAndGet);
+
+        crewJoining.take(joinCode.toString(), positions.get(0).id());
+        var holder = ((TakeResult.Taken) crewJoining.takeOver(joinCode.toString(), positions.get(0).id())).token();
+        crewJoining.take(joinCode.toString(), positions.get(1).id());
+        crewJoining.changePosition(holder);
+        exercises.end(joinCode);
+
+        assertThat(heard).hasValue(5);
+        assertThat(heardOfOther).hasValue(0);
+    }
+
+    @Test
+    void aFollowerThatFailsNeitherUndoesTheChangeNorKeepsItFromTheOthers() {
+        var joinCode = exercises.createFrom(aScenario());
+        var officer = crewJoining.findExercise(joinCode.toString()).orElseThrow().positions().getFirst();
+        var heard = new AtomicInteger();
+        crewJoining.subscribe(joinCode, () -> {
+            throw new IllegalStateException("A browser that has gone away");
+        });
+        crewJoining.subscribe(joinCode, heard::incrementAndGet);
+
+        var result = crewJoining.take(joinCode.toString(), officer.id());
+
+        assertThat(result).isInstanceOf(TakeResult.Taken.class);
+        assertThat(heard).hasValue(1);
+    }
+
+    @Test
+    void aCancelledSubscriptionHearsNothingMore() {
+        var joinCode = exercises.createFrom(aScenario());
+        var officer = crewJoining.findExercise(joinCode.toString()).orElseThrow().positions().getFirst();
+        var heard = new AtomicInteger();
+        crewJoining.subscribe(joinCode, heard::incrementAndGet).cancel();
+
+        crewJoining.take(joinCode.toString(), officer.id());
+
+        assertThat(heard).hasValue(0);
     }
 
     private ScenarioId twoPositions() {
