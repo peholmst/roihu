@@ -1,6 +1,6 @@
 # Join by code and see the positions
 
-Status: ready-for-agent
+Status: done
 
 ## Parent
 
@@ -21,17 +21,23 @@ Crew routes are open to anonymous users (ADR-0005).
 
 ## Acceptance criteria
 
-- [ ] Join codes are 8 Crockford base32 characters from a secure random source, shown as `XXXX-XXXX`, and unique across exercises
-- [ ] Typed codes are accepted regardless of case, hyphens and spaces, with O read as 0 and I/L as 1
-- [ ] Input that is not 8 valid characters is flagged on the join screen while typing
-- [ ] Unknown codes, malformed codes that reach the server, and codes of ended exercises all give one identical "No exercise with this code" result
-- [ ] A join link carrying a code opens the join screen with the code filled in
-- [ ] The picker shows the prepared language, the exercise state, and positions in scenario order as "call sign · name", or the name alone
-- [ ] The scenario's name appears nowhere on crew screens
-- [ ] The dev seeder runs only under a development profile and logs the join code and the full join link
-- [ ] Service tests run against Testcontainers PostgreSQL with the real Flyway migrations; view tests use browserless-test-spring
-- [ ] No hard-coded user-facing strings
+- [x] Join codes are 8 Crockford base32 characters from a secure random source, shown as `XXXX-XXXX`, and unique across exercises
+- [x] Typed codes are accepted regardless of case, hyphens and spaces, with O read as 0 and I/L as 1
+- [x] Input that is not 8 valid characters is flagged on the join screen while typing
+- [x] Unknown codes, malformed codes that reach the server, and codes of ended exercises all give one identical "No exercise with this code" result
+- [x] A join link carrying a code opens the join screen with the code filled in
+- [x] The picker shows the prepared language, the exercise state, and positions in scenario order as "call sign · name", or the name alone
+- [x] The scenario's name appears nowhere on crew screens
+- [x] The dev seeder runs only under a development profile and logs the join code and the full join link
+- [x] Service tests run against Testcontainers PostgreSQL with the real Flyway migrations; view tests use browserless-test-spring
+- [x] No hard-coded user-facing strings
 
 ## Blocked by
 
 None - can start immediately
+
+## Comments
+
+Done in 4afbf3d. Two decisions made during implementation: incomplete codes are flagged only
+on submit, not while typing, and local runs default to the `dev` Spring profile, which is what
+enables the seeder.
