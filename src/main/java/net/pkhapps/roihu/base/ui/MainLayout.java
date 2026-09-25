@@ -14,7 +14,14 @@ import com.vaadin.flow.component.sidenav.SideNavItem;
 import com.vaadin.flow.router.Layout;
 import com.vaadin.flow.server.menu.MenuConfiguration;
 import com.vaadin.flow.server.menu.MenuEntry;
+import jakarta.annotation.security.PermitAll;
 
+/**
+ * The training officer's shell. A layout has to permit at least as much as the views inside it,
+ * so this permits any authenticated user and each view narrows from there. Crew members are never
+ * authenticated and will need a shell of their own.
+ */
+@PermitAll
 @Layout
 public final class MainLayout extends AppLayout {
 
