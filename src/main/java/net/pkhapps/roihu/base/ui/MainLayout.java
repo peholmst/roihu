@@ -1,4 +1,4 @@
-package com.example.base.ui;
+package net.pkhapps.roihu.base.ui;
 
 import com.vaadin.flow.component.Component;
 import com.vaadin.flow.component.Unit;
@@ -24,12 +24,11 @@ public final class MainLayout extends AppLayout {
     }
 
     private Component createApplicationHeader() {
-        // TODO Replace with real application logo and name
-        var appLogo = new Avatar("My Application");
+        var appLogo = new Avatar("Roihu");
         appLogo.addClassName("app-logo");
         appLogo.addThemeVariants(AvatarVariant.AURA_FILLED, AvatarVariant.XSMALL);
 
-        var appName = new Span("My Application");
+        var appName = new Span("Roihu");
         appName.addClassName("app-name");
 
         var header = new HorizontalLayout(appLogo, appName);

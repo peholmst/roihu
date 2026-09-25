@@ -12,7 +12,7 @@ classes in means an ordinary build, an IDE import and a CI run need nothing but
 Maven, and the diff of a schema change shows up in review alongside the migration
 that caused it.
 
-Generation cleans a disposable `tabletop_codegen` database in the Compose PostgreSQL,
+Generation cleans a disposable `roihu_codegen` database in the Compose PostgreSQL,
 re-applies every migration into it, and reads the real catalog — so every
 PostgreSQL-specific type, constraint and index is reflected exactly rather than
 through a SQL parser's approximation, and the generated classes reflect the migrations

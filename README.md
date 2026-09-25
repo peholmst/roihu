@@ -1,6 +1,6 @@
-# My Application README
+# Roihu
 
-- [ ] TODO Replace or update this README with instructions relevant to your application
+A web app for running small-scale tabletop exercises for fire crews.
 
 ## Requirements
 

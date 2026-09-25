@@ -1,4 +1,4 @@
-package com.example;
+package net.pkhapps.roihu;
 
 import com.vaadin.flow.theme.aura.Aura;
 import org.springframework.boot.SpringApplication;

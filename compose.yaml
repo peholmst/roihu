@@ -3,15 +3,15 @@
 # it for port 8080. Start the application with `.vaadin/vaadin-dev start`.
 # See docs/adr/0009-compose-for-dependencies-app-on-the-host.md.
 
-name: tabletop-app
+name: roihu
 
 services:
   postgres:
     image: postgres:18-alpine
     environment:
-      POSTGRES_DB: tabletop
-      POSTGRES_USER: tabletop
-      POSTGRES_PASSWORD: tabletop
+      POSTGRES_DB: roihu
+      POSTGRES_USER: roihu
+      POSTGRES_PASSWORD: roihu
     ports:
       - "5432:5432"
     volumes:
@@ -21,7 +21,7 @@ services:
       # Creates the codegen database on first initialisation of the volume.
       - ./docker/postgres:/docker-entrypoint-initdb.d:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U tabletop -d tabletop"]
+      test: ["CMD-SHELL", "pg_isready -U roihu -d roihu"]
       interval: 5s
       timeout: 5s
       retries: 10

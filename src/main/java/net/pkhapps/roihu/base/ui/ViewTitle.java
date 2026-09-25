@@ -1,4 +1,4 @@
-package com.example.base.ui;
+package net.pkhapps.roihu.base.ui;
 
 import com.vaadin.flow.component.Composite;
 import com.vaadin.flow.component.applayout.DrawerToggle;

@@ -1,4 +1,4 @@
-# Tabletop Exercise
+# Roihu
 
 A web app for running small-scale tabletop exercises for fire crews. The training
 officer drives the simulation by hand — there is no automation — and the app is

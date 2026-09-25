@@ -1,4 +1,4 @@
 @NullMarked
-package com.example.base.ui;
+package net.pkhapps.roihu.base.ui;
 
 import org.jspecify.annotations.NullMarked;

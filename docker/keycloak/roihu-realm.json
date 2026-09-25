@@ -1,15 +1,15 @@
 {
-  "realm": "tabletop",
+  "realm": "roihu",
   "enabled": true,
-  "displayName": "Tabletop Exercise (development)",
+  "displayName": "Roihu (development)",
   "loginTheme": "keycloak",
   "internationalizationEnabled": true,
   "supportedLocales": ["fi", "sv", "en"],
   "defaultLocale": "en",
   "clients": [
     {
-      "clientId": "tabletop-app",
-      "name": "Tabletop Exercise",
+      "clientId": "roihu",
+      "name": "Roihu",
       "enabled": true,
       "protocol": "openid-connect",
       "publicClient": false,

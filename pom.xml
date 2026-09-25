@@ -2,8 +2,8 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
     <!-- Project from https://start.vaadin.com/db1cd552-b125-46f6-a1b7-23e488ce518e -->
-    <groupId>com.example</groupId>
-    <artifactId>tabletop-app</artifactId>
+    <groupId>net.pkhapps</groupId>
+    <artifactId>roihu</artifactId>
     <version>1.0-SNAPSHOT</version>
     <packaging>jar</packaging>
     
@@ -155,7 +155,7 @@
                 mvn -Pcodegen generate-sources
 
             Flyway cleans and re-applies every migration into the disposable
-            tabletop_codegen database, and jOOQ generates from the resulting catalog,
+            roihu_codegen database, and jOOQ generates from the resulting catalog,
             so the generated classes always reflect the migrations as a whole rather
             than whatever a developer's database happens to hold. Docker is needed
             for this and for nothing else in the build.
@@ -165,9 +165,9 @@
         <profile>
             <id>codegen</id>
             <properties>
-                <codegen.url>jdbc:postgresql://localhost:5432/tabletop_codegen</codegen.url>
-                <codegen.user>tabletop</codegen.user>
-                <codegen.password>tabletop</codegen.password>
+                <codegen.url>jdbc:postgresql://localhost:5432/roihu_codegen</codegen.url>
+                <codegen.user>roihu</codegen.user>
+                <codegen.password>roihu</codegen.password>
             </properties>
             <build>
                 <plugins>
@@ -248,7 +248,7 @@
                                     <excludes>flyway_schema_history</excludes>
                                 </database>
                                 <target>
-                                    <packageName>com.example.db.generated</packageName>
+                                    <packageName>net.pkhapps.roihu.db.generated</packageName>
                                     <directory>src/main/java</directory>
                                     <clean>true</clean>
                                 </target>

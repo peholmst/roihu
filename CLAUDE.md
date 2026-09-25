@@ -1,6 +1,8 @@
-# tabletop-app
+# Roihu
 
-A Vaadin 25.3 (Flow + Spring Boot) application.
+A Vaadin 25.3 (Flow + Spring Boot) application for running tabletop exercises for fire
+crews. The domain language is defined in `CONTEXT.md`; the decisions behind it in
+`docs/adr/`.
 
 ## Agent skills
 
