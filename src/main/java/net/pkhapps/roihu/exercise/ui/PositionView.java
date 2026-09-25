@@ -56,8 +56,9 @@ public class PositionView extends Composite<VerticalLayout> implements BeforeEnt
 
     private void changePosition(Holding holding, HolderToken token) {
         if (!crewJoining.changePosition(token)) {
-            // The exercise ended since this screen was shown; show it as it is now.
-            getUI().ifPresent(ui -> ui.getPage().reload());
+            // The position was taken over, or the exercise ended, since this screen was shown.
+            // Enter it again to find out which.
+            getUI().ifPresent(ui -> ui.refreshCurrentRoute(false));
             return;
         }
         HolderTokens.clear(holding.joinCode());

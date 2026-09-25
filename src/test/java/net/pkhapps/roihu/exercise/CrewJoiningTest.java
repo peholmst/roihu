@@ -9,9 +9,14 @@ import org.jooq.DSLContext;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.Random;
+import java.util.concurrent.Callable;
+import java.util.concurrent.CyclicBarrier;
+import java.util.concurrent.Executors;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.tuple;
@@ -138,6 +143,47 @@ class CrewJoiningTest {
     }
 
     @Test
+    void crewMembersTakingOnePositionAtOnceLeaveExactlyOneHolderAndTheOthersAreOfferedATakeOver()
+            throws Exception {
+        var joinCode = exercises.createFrom(aScenario()).toString();
+        var officer = crewJoining.findExercise(joinCode).orElseThrow().positions().getFirst();
+        var crewMembers = 8;
+        var start = new CyclicBarrier(crewMembers);
+
+        List<TakeResult> results;
+        try (var executor = Executors.newFixedThreadPool(crewMembers)) {
+            Callable<TakeResult> take = () -> {
+                start.await();
+                return crewJoining.take(joinCode, officer.id());
+            };
+            var takes = executor.invokeAll(Collections.nCopies(crewMembers, take));
+            results = new ArrayList<>();
+            for (var taking : takes) {
+                results.add(taking.get());
+            }
+        }
+
+        assertThat(results).filteredOn(TakeResult.Taken.class::isInstance).hasSize(1);
+        assertThat(results).filteredOn(TakeResult.AlreadyTaken.class::isInstance).hasSize(crewMembers - 1);
+    }
+
+    @Test
+    void takingOverAHeldPositionGivesANewTokenAndThePreviousHolderNoLongerHoldsIt() {
+        var joinCode = exercises.createFrom(aScenario()).toString();
+        var officer = crewJoining.findExercise(joinCode).orElseThrow().positions().getFirst();
+        var previous = ((TakeResult.Taken) crewJoining.take(joinCode, officer.id())).token();
+
+        var result = crewJoining.takeOver(joinCode, officer.id());
+
+        var token = assertThat(result).asInstanceOf(type(TakeResult.Taken.class)).actual().token();
+        assertThat(token).isNotEqualTo(previous);
+        assertThat(crewJoining.findHolding(previous)).isEmpty();
+        assertThat(crewJoining.findHolding(token)).get()
+                .extracting(holding -> holding.position().id()).isEqualTo(officer.id());
+        assertThat(crewJoining.findExercise(joinCode).orElseThrow().positions().getFirst().taken()).isTrue();
+    }
+
+    @Test
     void changingPositionFreesItAndTheTokenNoLongerHoldsAnything() {
         var joinCode = exercises.createFrom(aScenario()).toString();
         var officer = crewJoining.findExercise(joinCode).orElseThrow().positions().getFirst();
@@ -159,6 +205,8 @@ class CrewJoiningTest {
 
         assertThat(crewJoining.take(joinCode.toString(), positions.get(1).id()))
                 .isInstanceOf(TakeResult.NotJoinable.class);
+        assertThat(crewJoining.takeOver(joinCode.toString(), positions.get(0).id()))
+                .isInstanceOf(TakeResult.NotJoinable.class);
         assertThat(crewJoining.changePosition(holder)).isFalse();
         assertThat(crewJoining.findHolding(holder)).get()
                 .extracting(Holding::state).isEqualTo(ExerciseState.ENDED);
@@ -172,6 +220,7 @@ class CrewJoiningTest {
 
         assertThat(crewJoining.take(ours, theirOfficer.id())).isInstanceOf(TakeResult.NotJoinable.class);
         assertThat(crewJoining.take("ZZZZ-ZZZZ", theirOfficer.id())).isInstanceOf(TakeResult.NotJoinable.class);
+        assertThat(crewJoining.takeOver(ours, theirOfficer.id())).isInstanceOf(TakeResult.NotJoinable.class);
         assertThat(crewJoining.findExercise(theirs).orElseThrow().positions().getFirst().taken()).isFalse();
     }
 

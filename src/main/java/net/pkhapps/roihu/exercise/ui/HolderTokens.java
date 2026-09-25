@@ -27,8 +27,13 @@ final class HolderTokens {
 
     static Optional<HolderToken> read(JoinCode joinCode) {
         var session = VaadinSession.getCurrent();
-        if (session != null && session.getAttribute(name(joinCode)) instanceof HolderToken token) {
+        var kept = session == null ? null : session.getAttribute(name(joinCode));
+        if (kept instanceof HolderToken token) {
             return Optional.of(token);
+        }
+        // Cleared in this session: the request may still carry the cookie it had before.
+        if (kept == Released.RELEASED) {
+            return Optional.empty();
         }
         var request = VaadinService.getCurrentRequest();
         if (request == null || request.getCookies() == null) {
@@ -53,7 +58,7 @@ final class HolderTokens {
     }
 
     static void clear(JoinCode joinCode) {
-        VaadinSession.getCurrent().setAttribute(name(joinCode), null);
+        VaadinSession.getCurrent().setAttribute(name(joinCode), Released.RELEASED);
         setCookie(joinCode, "", Duration.ZERO);
     }
 
@@ -65,6 +70,11 @@ final class HolderTokens {
         cookie.setAttribute("SameSite", "Lax");
         cookie.setMaxAge((int) lifetime.toSeconds());
         VaadinService.getCurrentResponse().addCookie(cookie);
+    }
+
+    /** What the session keeps for an exercise once this browser holds no position in it. */
+    private enum Released {
+        RELEASED
     }
 
     private static String name(JoinCode joinCode) {

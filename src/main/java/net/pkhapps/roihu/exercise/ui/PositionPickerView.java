@@ -2,6 +2,7 @@ package net.pkhapps.roihu.exercise.ui;
 
 import com.vaadin.flow.component.Composite;
 import com.vaadin.flow.component.button.Button;
+import com.vaadin.flow.component.confirmdialog.ConfirmDialog;
 import com.vaadin.flow.component.html.H1;
 import com.vaadin.flow.component.html.ListItem;
 import com.vaadin.flow.component.html.Paragraph;
@@ -46,21 +47,28 @@ public class PositionPickerView extends Composite<VerticalLayout> implements Bef
             event.forwardTo(PositionView.class, new RouteParameters("code", parsed.get().toString()));
             return;
         }
+        // A token that no longer holds anything was taken over: only a change of position,
+        // which forgets the token, releases a holding otherwise. Say so once, then forget it.
+        var takenOver = parsed.filter(joinCode -> HolderTokens.read(joinCode).isPresent());
+        takenOver.ifPresent(HolderTokens::clear);
         var exercise = parsed.flatMap(joinCode -> crewJoining.findExercise(joinCode.toString()));
         if (exercise.isEmpty()) {
             event.forwardTo(JoinView.class);
             return;
         }
         joinCode = parsed.get();
-        show(exercise.get());
+        show(exercise.get(), takenOver.isPresent());
     }
 
-    private void show(JoinableExercise exercise) {
+    private void show(JoinableExercise exercise, boolean takenOver) {
         var positions = new UnorderedList();
         exercise.positions().forEach(position -> positions.add(positionItem(position)));
         getContent().removeAll();
+        getContent().add(new H1(getTranslation("picker.title")));
+        if (takenOver) {
+            getContent().add(new Paragraph(getTranslation("picker.taken-over")));
+        }
         getContent().add(
-                new H1(getTranslation("picker.title")),
                 new Paragraph(getTranslation("exercise.state." + exercise.state())),
                 new Paragraph(getTranslation("picker.prepared-language",
                         getTranslation("prepared-language." + exercise.preparedLanguage()))),
@@ -68,31 +76,71 @@ public class PositionPickerView extends Composite<VerticalLayout> implements Bef
     }
 
     private ListItem positionItem(ExercisePosition position) {
-        var take = new Button(Positions.describe(position), event -> take(position));
+        var take = new Button(Positions.describe(position),
+                event -> {
+                    if (position.taken()) {
+                        confirmTakeOver(position);
+                    } else {
+                        take(position);
+                    }
+                });
         var item = new ListItem(take);
         if (position.taken()) {
-            take.setEnabled(false);
             item.add(new Span(getTranslation("picker.taken")));
         }
         return item;
     }
 
     private void take(ExercisePosition position) {
-        // Another window of this browser may have taken a position since this one was shown. A
-        // browser holds one position per exercise, so send it there rather than take a second
-        // one and orphan the first behind a token nobody keeps.
-        if (HolderTokens.holding(joinCode, crewJoining).isPresent()) {
-            navigate(PositionView.class);
+        if (alreadyHoldsAPosition()) {
             return;
         }
         switch (crewJoining.take(joinCode.toString(), position.id())) {
-            case TakeResult.Taken taken -> {
-                HolderTokens.write(joinCode, taken.token());
-                navigate(PositionView.class);
-            }
-            case TakeResult.AlreadyTaken alreadyTaken -> navigate(PositionPickerView.class);
+            case TakeResult.Taken taken -> hold(taken);
+            // Someone took it since the picker was shown, perhaps at the same moment.
+            case TakeResult.AlreadyTaken alreadyTaken -> confirmTakeOver(position);
             case TakeResult.NotJoinable notJoinable -> getUI().ifPresent(ui -> ui.navigate(JoinView.class));
         }
+    }
+
+    private void confirmTakeOver(ExercisePosition position) {
+        var confirmation = new ConfirmDialog();
+        confirmation.setHeader(getTranslation("picker.take-over.title"));
+        confirmation.setText(getTranslation("picker.take-over.text", Positions.describe(position)));
+        confirmation.setConfirmText(getTranslation("picker.take-over.confirm"));
+        confirmation.setCancelable(true);
+        confirmation.setCancelText(getTranslation("picker.take-over.cancel"));
+        confirmation.addConfirmListener(event -> takeOver(position));
+        confirmation.open();
+    }
+
+    private void takeOver(ExercisePosition position) {
+        if (alreadyHoldsAPosition()) {
+            return;
+        }
+        switch (crewJoining.takeOver(joinCode.toString(), position.id())) {
+            case TakeResult.Taken taken -> hold(taken);
+            case TakeResult.AlreadyTaken alreadyTaken -> throw new IllegalStateException("A take-over always takes");
+            case TakeResult.NotJoinable notJoinable -> getUI().ifPresent(ui -> ui.navigate(JoinView.class));
+        }
+    }
+
+    /**
+     * Another window of this browser may have taken a position since this one was shown. A
+     * browser holds one position per exercise, so send it there rather than take a second one
+     * and orphan the first behind a token nobody keeps.
+     */
+    private boolean alreadyHoldsAPosition() {
+        if (HolderTokens.holding(joinCode, crewJoining).isPresent()) {
+            navigate(PositionView.class);
+            return true;
+        }
+        return false;
+    }
+
+    private void hold(TakeResult.Taken taken) {
+        HolderTokens.write(joinCode, taken.token());
+        navigate(PositionView.class);
     }
 
     private void navigate(Class<? extends com.vaadin.flow.component.Component> view) {

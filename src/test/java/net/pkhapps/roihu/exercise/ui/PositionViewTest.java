@@ -93,6 +93,20 @@ class PositionViewTest extends SpringBrowserlessTest {
     }
 
     @Test
+    void changingPositionAfterReopeningTheBrowserIsNotMistakenForATakeOver() {
+        var joinCode = anExercise();
+        navigate("join/" + joinCode + "/positions", PositionPickerView.class);
+        test(find(Button.class).withText("RVS911K · Pump operator").single()).click();
+        reopenTheBrowser();
+        navigate("join/" + joinCode, PositionView.class);
+
+        test(find(Button.class).withText("Change position").single()).click();
+
+        assertThat(getCurrentView()).isInstanceOf(PositionPickerView.class);
+        assertThat(getCurrentView().getElement().getTextRecursively()).doesNotContain("taken over");
+    }
+
+    @Test
     void onceTheExerciseHasEndedTheHolderKeepsThePositionButCannotChangeIt() {
         var joinCode = anExercise();
         navigate("join/" + joinCode + "/positions", PositionPickerView.class);

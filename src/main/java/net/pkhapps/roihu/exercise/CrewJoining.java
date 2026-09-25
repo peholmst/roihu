@@ -78,6 +78,28 @@ public class CrewJoining {
                 : new TakeResult.NotJoinable();
     }
 
+    /**
+     * Takes a position whoever holds it, in the exercise that {@code typedCode} admits to. The
+     * previous holder's token stops holding anything, which is how a crew member gets their
+     * position back on a new device. Refused once the exercise has ended.
+     */
+    @Transactional
+    public TakeResult takeOver(String typedCode, PositionId position) {
+        var joinCode = JoinCode.parse(typedCode);
+        if (joinCode.isEmpty()) {
+            return new TakeResult.NotJoinable();
+        }
+        var token = HolderToken.random(random);
+        var taken = db.insertInto(HOLDING, HOLDING.EXERCISE_POSITION_ID, HOLDING.TOKEN_HASH)
+                .select(db.select(EXERCISE_POSITION.ID, DSL.val(token.hash()))
+                        .from(EXERCISE_POSITION)
+                        .where(joinablePosition(joinCode.get(), position)))
+                .onConflict(HOLDING.EXERCISE_POSITION_ID).doUpdate()
+                .set(HOLDING.TOKEN_HASH, token.hash())
+                .execute();
+        return taken == 1 ? new TakeResult.Taken(token) : new TakeResult.NotJoinable();
+    }
+
     private static Condition joinablePosition(JoinCode joinCode, PositionId position) {
         return EXERCISE_POSITION.ID.eq(position.value())
                 .and(EXERCISE_POSITION.EXERCISE_ID.in(DSL.select(EXERCISE.ID).from(EXERCISE)
