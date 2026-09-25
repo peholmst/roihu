@@ -23,8 +23,16 @@ _Avoid_: Session, simulation, run, game
 A function on the fire ground that the scenario expects someone to occupy, such as
 Incident Commander or Pump Operator. Defined by the scenario and filled by a
 person for the duration of one exercise. Injects are revealed to positions, not to
-people.
+people. Held by at most one crew member at a time: taking a position someone already
+holds takes it over, and the previous holder is released to choose again.
 _Avoid_: Role (reserved for access control), seat, slot, assignment
+
+**Call Sign**:
+The identifier a position is addressed by on the radio, such as RVSP911 for a unit's
+officer or RVS911S1 for its first firefighter. The same in every language, and
+written however the station writes it: the app imposes no format of its own, and a
+position may have none, or share one with another position.
+_Avoid_: Abbreviation, code, tag, radio ID
 
 **Crew Member**:
 A firefighter taking part in an exercise, occupying exactly one position. Known to
