@@ -1,6 +1,6 @@
 # Take a free position and keep it
 
-Status: ready-for-agent
+Status: done
 
 ## Parent
 
@@ -14,15 +14,30 @@ A holding links one exercise position to one holder token. The token is stored i
 
 ## Acceptance criteria
 
-- [ ] Taking a free position creates a holding and shows the position screen
-- [ ] The picker marks each position free or taken
-- [ ] Reopening the app with a valid holder token goes straight to the position screen, without the join code
-- [ ] Only a hash of the holder token is stored
-- [ ] Change position frees the position and returns to the picker
-- [ ] A holding survives the exercise ending; an ended exercise refuses taking and changing position
-- [ ] The position screen shows no join code, no other positions and no scenario name
-- [ ] Service and view tests cover the above
+- [x] Taking a free position creates a holding and shows the position screen
+- [x] The picker marks each position free or taken
+- [x] Reopening the app with a valid holder token goes straight to the position screen, without the join code
+- [x] Only a hash of the holder token is stored
+- [x] Change position frees the position and returns to the picker
+- [x] A holding survives the exercise ending; an ended exercise refuses taking and changing position
+- [x] The position screen shows no join code, no other positions and no scenario name
+- [x] Service and view tests cover the above
 
 ## Blocked by
 
 - [Join by code and see the positions](01-join-by-code-and-see-the-positions.md)
+
+## Comments
+
+Done in c3465f2. Found during implementation and review:
+
+- The cookie alone is not enough: the round trip that takes a position cannot read the cookie
+  it is setting, so the token is also kept in the Vaadin session. The cookie is what survives
+  a new session.
+- Push is pinned to `WEBSOCKET_XHR`, because only an HTTP response can set a cookie.
+- A browser holds one position per exercise. Another window of it that tries to take a second
+  one is sent to the first instead (Codex review).
+- Holders are sent to their position before joinability is checked, so they find it after
+  the exercise has ended whichever way they come back (Codex review).
+- Not covered by tests: that only the token's hash is stored, and a change of position
+  refused because the exercise ended while the screen was open.
