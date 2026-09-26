@@ -1,6 +1,6 @@
 # PRD: Joining an exercise and taking a position
 
-Status: ready-for-agent
+Status: done
 
 ## Problem Statement
 
@@ -166,3 +166,17 @@ Only a take-over or a change of position releases a holding. There is no presenc
 - Glossary updates made during design: **Position** now states that it has at most one holder and that taking a held position takes it over; **Call Sign** is a new term.
 - Copying positions into the exercise extends ADR-0002 beyond injects. Worth recording in ADR-0002, or a follow-up ADR, once the officer side creates exercises for real.
 - Push affects deployment: the proxy in front of the app must pass WebSocket traffic, or crew members fall back to long-polling.
+
+## Comments
+
+Done: all five issues are implemented.
+
+- [01 Join by code and see the positions](issues/01-join-by-code-and-see-the-positions.md) — 4afbf3d
+- [02 Take a free position and keep it](issues/02-take-a-free-position-and-keep-it.md) — c3465f2
+- [03 Take over a held position](issues/03-take-over-a-held-position.md) — 0e36898
+- [04 Live updates](issues/04-live-updates.md) — 0a3d518
+- [05 Interface language](issues/05-interface-language.md) — 6c62908
+
+Follow-ups noted in the issues: `<html lang>` does not follow the interface language (05), and
+copying positions into the exercise is still to be recorded in ADR-0002 or a follow-up ADR
+(Further Notes above).
