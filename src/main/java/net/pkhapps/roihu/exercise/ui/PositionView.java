@@ -6,6 +6,8 @@ import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.html.H1;
 import com.vaadin.flow.component.html.Paragraph;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
+import com.vaadin.flow.i18n.LocaleChangeEvent;
+import com.vaadin.flow.i18n.LocaleChangeObserver;
 import com.vaadin.flow.router.AfterNavigationEvent;
 import com.vaadin.flow.router.AfterNavigationObserver;
 import com.vaadin.flow.router.BeforeEnterEvent;
@@ -13,12 +15,14 @@ import com.vaadin.flow.router.BeforeEnterObserver;
 import com.vaadin.flow.router.Route;
 import com.vaadin.flow.router.RouteParameters;
 import com.vaadin.flow.server.auth.AnonymousAllowed;
+import net.pkhapps.roihu.base.i18n.LanguageSwitcher;
 import net.pkhapps.roihu.exercise.CrewJoining;
 import net.pkhapps.roihu.exercise.ExerciseState;
 import net.pkhapps.roihu.exercise.HolderToken;
 import net.pkhapps.roihu.exercise.Holding;
 import net.pkhapps.roihu.exercise.JoinCode;
 import net.pkhapps.roihu.exercise.Subscription;
+import org.jspecify.annotations.Nullable;
 
 /**
  * The screen a crew member keeps open while they hold a position. It will show the injects
@@ -27,7 +31,7 @@ import net.pkhapps.roihu.exercise.Subscription;
 @Route(value = "join/:code/position", autoLayout = false)
 @AnonymousAllowed
 public class PositionView extends Composite<VerticalLayout>
-        implements BeforeEnterObserver, AfterNavigationObserver {
+        implements BeforeEnterObserver, AfterNavigationObserver, LocaleChangeObserver {
 
     private final CrewJoining crewJoining;
 
@@ -35,8 +39,10 @@ public class PositionView extends Composite<VerticalLayout>
         this.crewJoining = crewJoining;
     }
 
+    private final LanguageSwitcher switcher = new LanguageSwitcher();
     private JoinCode joinCodeShown;
     private HolderToken token;
+    private @Nullable Holding shown;
     private Subscription subscription;
 
     @Override
@@ -86,10 +92,19 @@ public class PositionView extends Composite<VerticalLayout>
                         new RouteParameters("code", joinCodeShown.toString()))));
     }
 
+    @Override
+    public void localeChange(LocaleChangeEvent event) {
+        if (shown != null) {
+            show(shown, token);
+        }
+    }
+
     private void show(Holding holding, HolderToken token) {
+        shown = holding;
         var position = Positions.describe(holding.position());
         getContent().removeAll();
         getContent().add(
+                switcher,
                 new H1(position),
                 new Paragraph(getTranslation("exercise.state." + holding.state())),
                 new Paragraph(getTranslation("position.injects-empty", position)));

@@ -34,7 +34,7 @@ class JoinViewTest extends SpringBrowserlessTest {
         navigate(JoinView.class);
 
         test(find(TextField.class).single()).setValue(joinCode.toString());
-        test(find(Button.class).single()).click();
+        test(find(Button.class).withText("Join").single()).click();
 
         assertThat(getCurrentView()).isInstanceOf(PositionPickerView.class);
     }
@@ -82,7 +82,7 @@ class JoinViewTest extends SpringBrowserlessTest {
         var code = find(TextField.class).single();
 
         test(code).setValue("K7QX");
-        test(find(Button.class).single()).click();
+        test(find(Button.class).withText("Join").single()).click();
 
         assertThat(getCurrentView()).isInstanceOf(JoinView.class);
         assertThat(code.isInvalid()).isTrue();
@@ -94,7 +94,7 @@ class JoinViewTest extends SpringBrowserlessTest {
         var code = find(TextField.class).single();
 
         test(code).setValue("ZZZZ-ZZZZ");
-        test(find(Button.class).single()).click();
+        test(find(Button.class).withText("Join").single()).click();
 
         assertThat(getCurrentView()).isInstanceOf(JoinView.class);
         assertThat(code.isInvalid()).isTrue();

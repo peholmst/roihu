@@ -7,13 +7,18 @@ import com.vaadin.flow.component.html.H1;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.component.textfield.TextField;
 import com.vaadin.flow.data.value.ValueChangeMode;
+import com.vaadin.flow.i18n.LocaleChangeEvent;
+import com.vaadin.flow.i18n.LocaleChangeObserver;
 import com.vaadin.flow.router.BeforeEnterEvent;
 import com.vaadin.flow.router.BeforeEnterObserver;
 import com.vaadin.flow.router.Route;
 import com.vaadin.flow.router.RouteParameters;
 import com.vaadin.flow.server.auth.AnonymousAllowed;
+import net.pkhapps.roihu.base.i18n.LanguageSwitcher;
 import net.pkhapps.roihu.exercise.CrewJoining;
 import net.pkhapps.roihu.exercise.JoinCode;
+
+import org.jspecify.annotations.Nullable;
 
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
@@ -24,26 +29,39 @@ import java.nio.charset.StandardCharsets;
  */
 @Route(value = "join/:code?", autoLayout = false)
 @AnonymousAllowed
-public class JoinView extends Composite<VerticalLayout> implements BeforeEnterObserver {
+public class JoinView extends Composite<VerticalLayout> implements BeforeEnterObserver, LocaleChangeObserver {
 
     private final CrewJoining crewJoining;
+    private final H1 title = new H1();
     private final TextField code = new TextField();
+    private final Button join = new Button();
+    private @Nullable String error;
 
     JoinView(CrewJoining crewJoining) {
         this.crewJoining = crewJoining;
-        code.setLabel(getTranslation("join.code"));
         code.setValueChangeMode(ValueChangeMode.EAGER);
         code.addValueChangeListener(event -> {
             if (JoinCode.couldBecomeACode(event.getValue())) {
+                error = null;
                 code.setInvalid(false);
             } else {
                 showError("join.malformed");
             }
         });
-        var join = new Button(getTranslation("join.submit"), event -> join());
+        join.addClickListener(event -> join());
         join.addThemeVariants(ButtonVariant.PRIMARY);
         join.addClickShortcut(com.vaadin.flow.component.Key.ENTER);
-        getContent().add(new H1(getTranslation("join.title")), code, join);
+        getContent().add(new LanguageSwitcher(), title, code, join);
+    }
+
+    @Override
+    public void localeChange(LocaleChangeEvent event) {
+        title.setText(getTranslation("join.title"));
+        code.setLabel(getTranslation("join.code"));
+        join.setText(getTranslation("join.submit"));
+        if (error != null) {
+            code.setErrorMessage(getTranslation(error));
+        }
     }
 
     @Override
@@ -78,6 +96,7 @@ public class JoinView extends Composite<VerticalLayout> implements BeforeEnterOb
     }
 
     private void showError(String key) {
+        error = key;
         code.setErrorMessage(getTranslation(key));
         code.setInvalid(true);
     }
