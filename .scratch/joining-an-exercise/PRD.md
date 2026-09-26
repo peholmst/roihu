@@ -177,6 +177,5 @@ Done: all five issues are implemented.
 - [04 Live updates](issues/04-live-updates.md) — 0a3d518
 - [05 Interface language](issues/05-interface-language.md) — 6c62908
 
-Follow-up still open: copying positions into the exercise is to be recorded in ADR-0002 or a
-follow-up ADR (Further Notes above). The other, `<html lang>` not following the interface
-language (05), has since been fixed.
+Both follow-ups are closed. Copying positions into the exercise (Further Notes above) is
+recorded in ADR-0002, and `<html lang>` now follows the interface language (05).

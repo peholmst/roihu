@@ -18,4 +18,6 @@ owns its injects either way.
 
 Positions are snapshotted the same way, for the same reason, but when the exercise is
 created rather than when it starts: crew members take positions during setup, so the
-exercise must own its positions before anyone can join it.
+exercise must own its positions before anyone can join it. The copy keeps the
+scenario's order, names and call signs. It also protects the crew during the run: a
+scenario edit must never rename or remove a position a crew member already holds.
