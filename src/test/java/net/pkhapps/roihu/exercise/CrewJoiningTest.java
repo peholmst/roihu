@@ -12,6 +12,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Locale;
 import java.util.Optional;
 import java.util.Random;
 import java.util.concurrent.Callable;
@@ -59,7 +60,7 @@ class CrewJoiningTest {
     void theJoinCodeIsFoundHoweverItIsTyped() {
         var joinCode = exercises.createFrom(aScenario()).toString();
 
-        assertThat(crewJoining.findExercise(joinCode.toLowerCase())).isPresent();
+        assertThat(crewJoining.findExercise(joinCode.toLowerCase(Locale.ROOT))).isPresent();
         assertThat(crewJoining.findExercise(joinCode.replace("-", ""))).isPresent();
         assertThat(crewJoining.findExercise(" " + joinCode.replace("-", " ") + " ")).isPresent();
     }

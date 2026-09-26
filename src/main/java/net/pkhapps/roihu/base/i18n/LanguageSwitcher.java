@@ -8,6 +8,7 @@ import com.vaadin.flow.i18n.LocaleChangeEvent;
 import com.vaadin.flow.i18n.LocaleChangeObserver;
 
 import java.util.EnumMap;
+import java.util.Locale;
 import java.util.Map;
 
 /**
@@ -21,7 +22,7 @@ public class LanguageSwitcher extends Composite<HorizontalLayout> implements Loc
 
     public LanguageSwitcher() {
         for (var language : InterfaceLanguage.values()) {
-            var button = new Button(language.code().toUpperCase(), event -> choose(language));
+            var button = new Button(language.code().toUpperCase(Locale.ROOT), event -> choose(language));
             button.addThemeVariants(ButtonVariant.SMALL);
             button.setAriaLabel(language.ownName());
             buttons.put(language, button);

@@ -24,6 +24,8 @@ import net.pkhapps.roihu.exercise.JoinCode;
 import net.pkhapps.roihu.exercise.Subscription;
 import org.jspecify.annotations.Nullable;
 
+import java.util.Objects;
+
 /**
  * The screen a crew member keeps open while they hold a position. It will show the injects
  * revealed to that position; nothing else, not the join code nor the other positions.
@@ -40,10 +42,12 @@ public class PositionView extends Composite<VerticalLayout>
     }
 
     private final LanguageSwitcher switcher = new LanguageSwitcher();
-    private JoinCode joinCodeShown;
-    private HolderToken token;
-    private @Nullable Holding shown;
+    /** Known once the screen has been entered with a position to show. */
+    private @Nullable Shown shown;
     private @Nullable Subscription subscription;
+
+    private record Shown(Holding holding, HolderToken token) {
+    }
 
     @Override
     public void beforeEnter(BeforeEnterEvent event) {
@@ -54,9 +58,7 @@ public class PositionView extends Composite<VerticalLayout>
             event.forwardTo(PositionPickerView.class, new RouteParameters("code", code));
             return;
         }
-        joinCodeShown = joinCode.get();
-        token = HolderTokens.read(joinCodeShown).orElseThrow();
-        show(holding.get(), token);
+        show(holding.get(), HolderTokens.read(joinCode.get()).orElseThrow());
     }
 
     /**
@@ -64,10 +66,13 @@ public class PositionView extends Composite<VerticalLayout>
      * another exercise's screen reuses this one without attaching it again.
      */
     @Override
+    // What goes wrong in an access task reaches the session's error handler, not only its future.
+    @SuppressWarnings("FutureReturnValueIgnored")
     public void afterNavigation(AfterNavigationEvent event) {
         var ui = getUI().orElseThrow();
         stopFollowing();
-        subscription = crewJoining.subscribe(joinCodeShown, () -> ui.access(this::showAsItIsNow));
+        subscription = crewJoining.subscribe(entered().holding().joinCode(),
+                () -> ui.access(this::showAsItIsNow));
         // A change committed after the screen was read but before this subscription was not heard.
         ui.access(this::showAsItIsNow);
     }
@@ -86,21 +91,27 @@ public class PositionView extends Composite<VerticalLayout>
 
     /** The position may have been taken over, or the exercise may have changed state. */
     private void showAsItIsNow() {
-        crewJoining.findHolding(token).ifPresentOrElse(
-                holding -> show(holding, token),
+        var entered = entered();
+        crewJoining.findHolding(entered.token()).ifPresentOrElse(
+                holding -> show(holding, entered.token()),
                 () -> getUI().ifPresent(ui -> ui.navigate(PositionPickerView.class,
-                        new RouteParameters("code", joinCodeShown.toString()))));
+                        new RouteParameters("code", entered.holding().joinCode().toString()))));
+    }
+
+    /** What is shown, which only a screen that has been entered and not forwarded away has. */
+    private Shown entered() {
+        return Objects.requireNonNull(shown, "The position screen shows nothing before it is entered");
     }
 
     @Override
     public void localeChange(LocaleChangeEvent event) {
         if (shown != null) {
-            show(shown, token);
+            show(shown.holding(), shown.token());
         }
     }
 
     private void show(Holding holding, HolderToken token) {
-        shown = holding;
+        shown = new Shown(holding, token);
         var position = Positions.describe(holding.position());
         getContent().removeAll();
         getContent().add(

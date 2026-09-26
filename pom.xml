@@ -10,6 +10,8 @@
     <properties>
         <java.version>25</java.version>
         <vaadin.version>25.3.0</vaadin.version>
+        <errorprone.version>2.50.0</errorprone.version>
+        <nullaway.version>0.14.2</nullaway.version>
     </properties>
     
     <parent>
@@ -111,6 +113,34 @@
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
+            </plugin>
+            <!--
+                Error Prone, with NullAway failing the build on a possible null dereference in a
+                @NullMarked package. The generated jOOQ classes are left alone. Error Prone runs
+                inside javac, which on JDK 16 and later needs the exports in .mvn/jvm.config.
+            -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <configuration>
+                    <compilerArgs>
+                        <arg>-XDcompilePolicy=simple</arg>
+                        <arg>--should-stop=ifError=FLOW</arg>
+                        <arg>-Xplugin:ErrorProne -XepExcludedPaths:.*/net/pkhapps/roihu/db/generated/.* -Xep:NullAway:ERROR -XepOpt:NullAway:OnlyNullMarked=true -XepOpt:NullAway:JSpecifyMode=true</arg>
+                    </compilerArgs>
+                    <annotationProcessorPaths>
+                        <path>
+                            <groupId>com.google.errorprone</groupId>
+                            <artifactId>error_prone_core</artifactId>
+                            <version>${errorprone.version}</version>
+                        </path>
+                        <path>
+                            <groupId>com.uber.nullaway</groupId>
+                            <artifactId>nullaway</artifactId>
+                            <version>${nullaway.version}</version>
+                        </path>
+                    </annotationProcessorPaths>
+                </configuration>
             </plugin>
             <plugin>
                 <groupId>com.vaadin</groupId>

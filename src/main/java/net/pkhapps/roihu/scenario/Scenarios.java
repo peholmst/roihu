@@ -5,6 +5,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Objects;
 
 import static net.pkhapps.roihu.db.generated.Tables.SCENARIO;
 import static net.pkhapps.roihu.db.generated.Tables.SCENARIO_POSITION;
@@ -24,12 +25,12 @@ public class Scenarios {
 
     @Transactional
     public ScenarioId create(String name, PreparedLanguage preparedLanguage, List<ScenarioPosition> positions) {
-        var id = db.insertInto(SCENARIO)
+        var id = Objects.requireNonNull(db.insertInto(SCENARIO)
                 .set(SCENARIO.NAME, name)
                 .set(SCENARIO.PREPARED_LANGUAGE,
                         net.pkhapps.roihu.db.generated.enums.PreparedLanguage.lookupLiteral(preparedLanguage.code()))
                 .returning(SCENARIO.ID)
-                .fetchSingle(SCENARIO.ID);
+                .fetchSingle(SCENARIO.ID), "An inserted scenario always has an id");
         for (var ordinal = 0; ordinal < positions.size(); ordinal++) {
             var position = positions.get(ordinal);
             db.insertInto(SCENARIO_POSITION)

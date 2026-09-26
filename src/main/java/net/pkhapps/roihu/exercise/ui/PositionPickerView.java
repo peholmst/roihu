@@ -25,6 +25,8 @@ import net.pkhapps.roihu.exercise.Subscription;
 import net.pkhapps.roihu.exercise.TakeResult;
 import org.jspecify.annotations.Nullable;
 
+import java.util.Objects;
+
 
 /**
  * Where a crew member who has entered an exercise chooses the position they will occupy. Keyed
@@ -42,7 +44,8 @@ public class PositionPickerView extends Composite<VerticalLayout>
         this.crewJoining = crewJoining;
     }
 
-    private JoinCode joinCode;
+    /** Known once the picker has been entered with an exercise to show. */
+    private @Nullable JoinCode joinCode;
     private boolean takenOver;
     private @Nullable Subscription subscription;
 
@@ -74,10 +77,12 @@ public class PositionPickerView extends Composite<VerticalLayout>
      * another exercise's screen reuses this one without attaching it again.
      */
     @Override
+    // What goes wrong in an access task reaches the session's error handler, not only its future.
+    @SuppressWarnings("FutureReturnValueIgnored")
     public void afterNavigation(AfterNavigationEvent event) {
         var ui = getUI().orElseThrow();
         stopFollowing();
-        subscription = crewJoining.subscribe(joinCode, () -> ui.access(this::showAsItIsNow));
+        subscription = crewJoining.subscribe(joinCode(), () -> ui.access(this::showAsItIsNow));
         // A change committed after the screen was read but before this subscription was not heard.
         ui.access(this::showAsItIsNow);
     }
@@ -96,7 +101,7 @@ public class PositionPickerView extends Composite<VerticalLayout>
 
     /** Once the exercise has ended, it admits nobody, so there is nothing left to choose. */
     private void showAsItIsNow() {
-        crewJoining.findExercise(joinCode.toString()).ifPresentOrElse(this::show,
+        crewJoining.findExercise(joinCode().toString()).ifPresentOrElse(this::show,
                 () -> getUI().ifPresent(ui -> ui.navigate(JoinView.class)));
     }
 
@@ -135,7 +140,7 @@ public class PositionPickerView extends Composite<VerticalLayout>
         if (alreadyHoldsAPosition()) {
             return;
         }
-        switch (crewJoining.take(joinCode.toString(), position.id())) {
+        switch (crewJoining.take(joinCode().toString(), position.id())) {
             case TakeResult.Taken taken -> hold(taken);
             // Someone took it since the picker was shown, perhaps at the same moment.
             case TakeResult.AlreadyTaken alreadyTaken -> confirmTakeOver(position);
@@ -158,7 +163,7 @@ public class PositionPickerView extends Composite<VerticalLayout>
         if (alreadyHoldsAPosition()) {
             return;
         }
-        switch (crewJoining.takeOver(joinCode.toString(), position.id())) {
+        switch (crewJoining.takeOver(joinCode().toString(), position.id())) {
             case TakeResult.Taken taken -> hold(taken);
             case TakeResult.AlreadyTaken alreadyTaken -> throw new IllegalStateException("A take-over always takes");
             case TakeResult.NotJoinable notJoinable -> getUI().ifPresent(ui -> ui.navigate(JoinView.class));
@@ -171,7 +176,7 @@ public class PositionPickerView extends Composite<VerticalLayout>
      * and orphan the first behind a token nobody keeps.
      */
     private boolean alreadyHoldsAPosition() {
-        if (HolderTokens.holding(joinCode, crewJoining).isPresent()) {
+        if (HolderTokens.holding(joinCode(), crewJoining).isPresent()) {
             navigate(PositionView.class);
             return true;
         }
@@ -179,11 +184,15 @@ public class PositionPickerView extends Composite<VerticalLayout>
     }
 
     private void hold(TakeResult.Taken taken) {
-        HolderTokens.write(joinCode, taken.token());
+        HolderTokens.write(joinCode(), taken.token());
         navigate(PositionView.class);
     }
 
+    private JoinCode joinCode() {
+        return Objects.requireNonNull(joinCode, "The picker shows no exercise before it is entered");
+    }
+
     private void navigate(Class<? extends com.vaadin.flow.component.Component> view) {
-        getUI().ifPresent(ui -> ui.navigate(view, new RouteParameters("code", joinCode.toString())));
+        getUI().ifPresent(ui -> ui.navigate(view, new RouteParameters("code", joinCode().toString())));
     }
 }

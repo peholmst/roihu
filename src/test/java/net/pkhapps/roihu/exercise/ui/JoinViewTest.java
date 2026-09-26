@@ -14,6 +14,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.test.context.support.WithAnonymousUser;
 
 import java.util.List;
+import java.util.Locale;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -51,7 +52,7 @@ class JoinViewTest extends SpringBrowserlessTest {
     @Test
     void aJoinLinkIsReadHoweverItWasTyped() {
         var joinCode = anExercise();
-        var typedByHand = joinCode.toString().toLowerCase().replace("-", "%20");
+        var typedByHand = joinCode.toString().toLowerCase(Locale.ROOT).replace("-", "%20");
 
         navigate("join/" + typedByHand, JoinView.class);
 
