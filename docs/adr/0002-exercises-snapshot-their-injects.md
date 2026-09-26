@@ -21,3 +21,5 @@ created rather than when it starts: crew members take positions during setup, so
 exercise must own its positions before anyone can join it. The copy keeps the
 scenario's order, names and call signs. It also protects the crew during the run: a
 scenario edit must never rename or remove a position a crew member already holds.
+The scenario's prepared language is copied along with the positions, so that the
+language a crew was told to expect does not change under them either.

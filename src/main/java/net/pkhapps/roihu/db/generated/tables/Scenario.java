@@ -4,6 +4,7 @@
 package net.pkhapps.roihu.db.generated.tables;
 
 
+import java.time.OffsetDateTime;
 import java.util.Collection;
 import java.util.UUID;
 
@@ -72,6 +73,31 @@ public class Scenario extends TableImpl<ScenarioRecord> {
      * The column <code>public.scenario.prepared_language</code>.
      */
     public final TableField<ScenarioRecord, PreparedLanguage> PREPARED_LANGUAGE = createField(DSL.name("prepared_language"), SQLDataType.VARCHAR.nullable(false).asEnumDataType(PreparedLanguage.class), this, "");
+
+    /**
+     * The column <code>public.scenario.description</code>.
+     */
+    public final TableField<ScenarioRecord, String> DESCRIPTION = createField(DSL.name("description"), SQLDataType.CLOB, this, "");
+
+    /**
+     * The column <code>public.scenario.created_by</code>.
+     */
+    public final TableField<ScenarioRecord, String> CREATED_BY = createField(DSL.name("created_by"), SQLDataType.CLOB.nullable(false), this, "");
+
+    /**
+     * The column <code>public.scenario.created_at</code>.
+     */
+    public final TableField<ScenarioRecord, OffsetDateTime> CREATED_AT = createField(DSL.name("created_at"), SQLDataType.TIMESTAMPWITHTIMEZONE(6).nullable(false).defaultValue(DSL.field(DSL.raw("now()"), SQLDataType.TIMESTAMPWITHTIMEZONE)), this, "");
+
+    /**
+     * The column <code>public.scenario.last_changed_by</code>.
+     */
+    public final TableField<ScenarioRecord, String> LAST_CHANGED_BY = createField(DSL.name("last_changed_by"), SQLDataType.CLOB.nullable(false), this, "");
+
+    /**
+     * The column <code>public.scenario.last_changed_at</code>.
+     */
+    public final TableField<ScenarioRecord, OffsetDateTime> LAST_CHANGED_AT = createField(DSL.name("last_changed_at"), SQLDataType.TIMESTAMPWITHTIMEZONE(6).nullable(false).defaultValue(DSL.field(DSL.raw("now()"), SQLDataType.TIMESTAMPWITHTIMEZONE)), this, "");
 
     private Scenario(Name alias, Table<ScenarioRecord> aliased) {
         this(alias, aliased, (Field<?>[]) null, null);

@@ -7,6 +7,7 @@ package net.pkhapps.roihu.db.generated.tables.records;
 import java.util.UUID;
 
 import net.pkhapps.roihu.db.generated.enums.ExerciseState;
+import net.pkhapps.roihu.db.generated.enums.PreparedLanguage;
 import net.pkhapps.roihu.db.generated.tables.Exercise;
 
 import org.jooq.Record1;
@@ -77,6 +78,20 @@ public class ExerciseRecord extends UpdatableRecordImpl<ExerciseRecord> {
         return (String) get(3);
     }
 
+    /**
+     * Setter for <code>public.exercise.prepared_language</code>.
+     */
+    public void setPreparedLanguage(PreparedLanguage value) {
+        set(4, value);
+    }
+
+    /**
+     * Getter for <code>public.exercise.prepared_language</code>.
+     */
+    public PreparedLanguage getPreparedLanguage() {
+        return (PreparedLanguage) get(4);
+    }
+
     // -------------------------------------------------------------------------
     // Primary key information
     // -------------------------------------------------------------------------
@@ -100,13 +115,14 @@ public class ExerciseRecord extends UpdatableRecordImpl<ExerciseRecord> {
     /**
      * Create a detached, initialised ExerciseRecord
      */
-    public ExerciseRecord(UUID id, UUID scenarioId, ExerciseState state, String joinCode) {
+    public ExerciseRecord(UUID id, UUID scenarioId, ExerciseState state, String joinCode, PreparedLanguage preparedLanguage) {
         super(Exercise.EXERCISE);
 
         setId(id);
         setScenarioId(scenarioId);
         setState(state);
         setJoinCode(joinCode);
+        setPreparedLanguage(preparedLanguage);
         resetTouchedOnNotNull();
     }
 }

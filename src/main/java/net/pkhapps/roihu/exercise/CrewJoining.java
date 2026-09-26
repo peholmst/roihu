@@ -46,13 +46,13 @@ public class CrewJoining {
     @Transactional(readOnly = true)
     public Optional<JoinableExercise> findExercise(String typedCode) {
         return JoinCode.parse(typedCode).flatMap(joinCode -> db
-                .select(EXERCISE.ID, EXERCISE.STATE, SCENARIO.PREPARED_LANGUAGE)
-                .from(EXERCISE).join(SCENARIO).on(SCENARIO.ID.eq(EXERCISE.SCENARIO_ID))
+                .select(EXERCISE.ID, EXERCISE.STATE, EXERCISE.PREPARED_LANGUAGE)
+                .from(EXERCISE)
                 .where(EXERCISE.JOIN_CODE.eq(joinCode.value()))
                 .and(EXERCISE.STATE.ne(STORED_ENDED))
                 .fetchOptional(record -> new JoinableExercise(
                         toExerciseState(record.get(EXERCISE.STATE)),
-                        PreparedLanguage.fromCode(record.get(SCENARIO.PREPARED_LANGUAGE).getLiteral()),
+                        PreparedLanguage.fromCode(record.get(EXERCISE.PREPARED_LANGUAGE).getLiteral()),
                         db.select(EXERCISE_POSITION.ID, EXERCISE_POSITION.NAME, EXERCISE_POSITION.CALL_SIGN,
                                         HOLDING.EXERCISE_POSITION_ID.isNotNull())
                                 .from(EXERCISE_POSITION)

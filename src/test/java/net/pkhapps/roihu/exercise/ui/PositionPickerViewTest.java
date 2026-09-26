@@ -9,6 +9,7 @@ import net.pkhapps.roihu.exercise.Exercises;
 import net.pkhapps.roihu.exercise.JoinCode;
 import net.pkhapps.roihu.exercise.TakeResult;
 import net.pkhapps.roihu.scenario.PreparedLanguage;
+import net.pkhapps.roihu.scenario.ScenarioContent;
 import net.pkhapps.roihu.scenario.ScenarioPosition;
 import net.pkhapps.roihu.scenario.Scenarios;
 import org.junit.jupiter.api.Test;
@@ -18,6 +19,7 @@ import org.springframework.security.test.context.support.WithAnonymousUser;
 import java.util.List;
 import java.util.Optional;
 
+import static net.pkhapps.roihu.TestOfficers.ANNA;
 import static org.assertj.core.api.Assertions.assertThat;
 
 @IntegrationTest
@@ -51,6 +53,20 @@ class PositionPickerViewTest extends SpringBrowserlessTest {
                 .contains("Injects are in Swedish")
                 .contains("Not started yet")
                 .doesNotContain("Warehouse fire");
+    }
+
+    @Test
+    void neitherThePickerNorThePositionScreenShowsTheScenariosDescription() {
+        var joinCode = exercises.createFrom(scenarios.create(new ScenarioContent("Warehouse fire",
+                PreparedLanguage.SWEDISH, Optional.of("The fire starts in the paint store"),
+                List.of(new ScenarioPosition("Officer", Optional.of("RVSP911")))), ANNA));
+
+        var picker = navigate("join/" + joinCode + "/positions", PositionPickerView.class);
+        assertThat(picker.getElement().getTextRecursively()).doesNotContain("paint store");
+
+        test(find(Button.class).withText("RVSP911 · Officer").single()).click();
+        assertThat(getCurrentView()).isInstanceOf(PositionView.class);
+        assertThat(getCurrentView().getElement().getTextRecursively()).doesNotContain("paint store");
     }
 
     @Test
@@ -126,9 +142,10 @@ class PositionPickerViewTest extends SpringBrowserlessTest {
     }
 
     private JoinCode anExercise() {
-        return exercises.createFrom(scenarios.create("Warehouse fire", PreparedLanguage.SWEDISH, List.of(
+        return exercises.createFrom(scenarios.create(new ScenarioContent("Warehouse fire",
+                PreparedLanguage.SWEDISH, Optional.empty(), List.of(
                 new ScenarioPosition("Officer", Optional.of("RVSP911")),
                 new ScenarioPosition("Pump operator", Optional.of("RVS911K")),
-                new ScenarioPosition("Safety officer", Optional.empty()))));
+                new ScenarioPosition("Safety officer", Optional.empty()))), ANNA));
     }
 }

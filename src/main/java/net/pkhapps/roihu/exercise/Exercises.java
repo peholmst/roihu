@@ -35,9 +35,17 @@ public class Exercises {
         this.randomness = randomness;
     }
 
-    /** Creates an exercise that owns a copy of the scenario's positions, and returns its join code. */
+    /**
+     * Creates an exercise that owns a copy of the scenario's positions and prepared language, and
+     * returns its join code.
+     */
     @Transactional
     public JoinCode createFrom(ScenarioId scenario) {
+        var preparedLanguage = db.select(SCENARIO.PREPARED_LANGUAGE)
+                .from(SCENARIO)
+                .where(SCENARIO.ID.eq(scenario.value()))
+                .fetchOptional(SCENARIO.PREPARED_LANGUAGE)
+                .orElseThrow(() -> new IllegalArgumentException("No scenario " + scenario.value()));
         var random = randomness.get();
         JoinCode joinCode;
         Optional<UUID> exerciseId;
@@ -46,6 +54,7 @@ public class Exercises {
             exerciseId = db.insertInto(EXERCISE)
                     .set(EXERCISE.SCENARIO_ID, scenario.value())
                     .set(EXERCISE.JOIN_CODE, joinCode.value())
+                    .set(EXERCISE.PREPARED_LANGUAGE, preparedLanguage)
                     .onConflict(EXERCISE.JOIN_CODE).doNothing()
                     .returning(EXERCISE.ID)
                     .fetchOptional(EXERCISE.ID);

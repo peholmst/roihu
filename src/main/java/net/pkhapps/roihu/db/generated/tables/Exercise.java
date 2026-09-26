@@ -12,6 +12,7 @@ import java.util.UUID;
 import net.pkhapps.roihu.db.generated.Keys;
 import net.pkhapps.roihu.db.generated.Public;
 import net.pkhapps.roihu.db.generated.enums.ExerciseState;
+import net.pkhapps.roihu.db.generated.enums.PreparedLanguage;
 import net.pkhapps.roihu.db.generated.tables.ExercisePosition.ExercisePositionPath;
 import net.pkhapps.roihu.db.generated.tables.Scenario.ScenarioPath;
 import net.pkhapps.roihu.db.generated.tables.records.ExerciseRecord;
@@ -79,6 +80,11 @@ public class Exercise extends TableImpl<ExerciseRecord> {
      * The column <code>public.exercise.join_code</code>.
      */
     public final TableField<ExerciseRecord, String> JOIN_CODE = createField(DSL.name("join_code"), SQLDataType.CHAR(8).nullable(false), this, "");
+
+    /**
+     * The column <code>public.exercise.prepared_language</code>.
+     */
+    public final TableField<ExerciseRecord, PreparedLanguage> PREPARED_LANGUAGE = createField(DSL.name("prepared_language"), SQLDataType.VARCHAR.nullable(false).asEnumDataType(PreparedLanguage.class), this, "");
 
     private Exercise(Name alias, Table<ExerciseRecord> aliased) {
         this(alias, aliased, (Field<?>[]) null, null);

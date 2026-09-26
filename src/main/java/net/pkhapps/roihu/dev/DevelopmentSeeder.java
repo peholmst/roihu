@@ -1,8 +1,10 @@
 package net.pkhapps.roihu.dev;
 
+import net.pkhapps.roihu.base.security.Officer;
 import net.pkhapps.roihu.exercise.Exercises;
 import net.pkhapps.roihu.exercise.JoinCode;
 import net.pkhapps.roihu.scenario.PreparedLanguage;
+import net.pkhapps.roihu.scenario.ScenarioContent;
 import net.pkhapps.roihu.scenario.ScenarioPosition;
 import net.pkhapps.roihu.scenario.Scenarios;
 import org.jooq.DSLContext;
@@ -31,6 +33,8 @@ class DevelopmentSeeder implements ApplicationRunner {
 
     private static final Logger log = LoggerFactory.getLogger(DevelopmentSeeder.class);
     private static final String SCENARIO_NAME = "RVS911 and RVS903 (seeded for development)";
+    /** Who the library says created the seeded scenario. Matches what the schema backfilled. */
+    private static final Officer SEEDER = new Officer("development seeder");
 
     private final DSLContext db;
     private final Scenarios scenarios;
@@ -47,15 +51,15 @@ class DevelopmentSeeder implements ApplicationRunner {
 
     @Override
     public void run(ApplicationArguments args) {
-        var joinCode = seededExercise().orElseGet(() -> exercises.createFrom(scenarios.create(
-                SCENARIO_NAME, PreparedLanguage.FINNISH, List.of(
+        var joinCode = seededExercise().orElseGet(() -> exercises.createFrom(scenarios.create(new ScenarioContent(
+                SCENARIO_NAME, PreparedLanguage.FINNISH, Optional.empty(), List.of(
                         new ScenarioPosition("Yksikönjohtaja", Optional.of("RVSP911")),
                         new ScenarioPosition("Kuljettaja", Optional.of("RVS911K")),
                         new ScenarioPosition("Savusukeltaja 1", Optional.of("RVS911S1")),
                         new ScenarioPosition("Savusukeltaja 2", Optional.of("RVS911S2")),
                         new ScenarioPosition("Savusukeltaja 3", Optional.of("RVS911S3")),
                         new ScenarioPosition("Savusukeltaja 4", Optional.of("RVS911S4")),
-                        new ScenarioPosition("Säiliöauton kuljettaja", Optional.of("RVS903"))))));
+                        new ScenarioPosition("Säiliöauton kuljettaja", Optional.of("RVS903")))), SEEDER)));
         log.info("Seeded exercise: join code {}, join link http://localhost:{}/join/{}", joinCode, port, joinCode);
     }
 

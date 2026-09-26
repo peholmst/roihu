@@ -7,6 +7,7 @@ import net.pkhapps.roihu.IntegrationTest;
 import net.pkhapps.roihu.exercise.Exercises;
 import net.pkhapps.roihu.exercise.JoinCode;
 import net.pkhapps.roihu.scenario.PreparedLanguage;
+import net.pkhapps.roihu.scenario.ScenarioContent;
 import net.pkhapps.roihu.scenario.ScenarioPosition;
 import net.pkhapps.roihu.scenario.Scenarios;
 import org.junit.jupiter.api.Test;
@@ -17,6 +18,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
 
+import static net.pkhapps.roihu.TestOfficers.ANNA;
 import static org.assertj.core.api.Assertions.assertThat;
 
 @IntegrationTest
@@ -103,7 +105,8 @@ class JoinViewTest extends SpringBrowserlessTest {
     }
 
     private JoinCode anExercise() {
-        return exercises.createFrom(scenarios.create("Warehouse fire", PreparedLanguage.FINNISH,
-                List.of(new ScenarioPosition("Officer", Optional.of("RVSP911")))));
+        return exercises.createFrom(scenarios.create(new ScenarioContent("Warehouse fire",
+                PreparedLanguage.FINNISH, Optional.empty(),
+                List.of(new ScenarioPosition("Officer", Optional.of("RVSP911")))), ANNA));
     }
 }

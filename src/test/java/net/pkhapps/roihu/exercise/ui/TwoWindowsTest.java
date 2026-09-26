@@ -9,6 +9,7 @@ import net.pkhapps.roihu.exercise.ExercisePosition;
 import net.pkhapps.roihu.exercise.Exercises;
 import net.pkhapps.roihu.exercise.JoinCode;
 import net.pkhapps.roihu.scenario.PreparedLanguage;
+import net.pkhapps.roihu.scenario.ScenarioContent;
 import net.pkhapps.roihu.scenario.ScenarioPosition;
 import net.pkhapps.roihu.scenario.Scenarios;
 import org.junit.jupiter.api.AfterEach;
@@ -21,6 +22,7 @@ import org.springframework.security.core.Authentication;
 import java.util.List;
 import java.util.Optional;
 
+import static net.pkhapps.roihu.TestOfficers.ANNA;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.tuple;
 
@@ -72,8 +74,9 @@ class TwoWindowsTest {
     }
 
     private JoinCode anExercise() {
-        return exercises.createFrom(scenarios.create("Warehouse fire", PreparedLanguage.FINNISH, List.of(
+        return exercises.createFrom(scenarios.create(new ScenarioContent("Warehouse fire",
+                PreparedLanguage.FINNISH, Optional.empty(), List.of(
                 new ScenarioPosition("Officer", Optional.of("RVSP911")),
-                new ScenarioPosition("Pump operator", Optional.of("RVS911K")))));
+                new ScenarioPosition("Pump operator", Optional.of("RVS911K")))), ANNA));
     }
 }

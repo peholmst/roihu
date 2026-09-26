@@ -1,0 +1,235 @@
+package net.pkhapps.roihu.scenario.ui;
+
+import com.vaadin.flow.component.Composite;
+import com.vaadin.flow.component.button.Button;
+import com.vaadin.flow.component.button.ButtonVariant;
+import com.vaadin.flow.component.grid.Grid;
+import com.vaadin.flow.component.grid.dataview.GridListDataView;
+import com.vaadin.flow.component.grid.dnd.GridDropLocation;
+import com.vaadin.flow.component.grid.dnd.GridDropMode;
+import com.vaadin.flow.component.html.H2;
+import com.vaadin.flow.component.html.Paragraph;
+import com.vaadin.flow.component.orderedlayout.VerticalLayout;
+import com.vaadin.flow.component.select.Select;
+import com.vaadin.flow.component.textfield.TextArea;
+import com.vaadin.flow.component.textfield.TextField;
+import com.vaadin.flow.router.BeforeEnterEvent;
+import com.vaadin.flow.router.BeforeEnterObserver;
+import com.vaadin.flow.router.PageTitle;
+import com.vaadin.flow.router.Route;
+import com.vaadin.flow.router.RouteParameters;
+import jakarta.annotation.security.RolesAllowed;
+import net.pkhapps.roihu.base.i18n.InterfaceLanguage;
+import net.pkhapps.roihu.base.security.Roles;
+import net.pkhapps.roihu.base.security.SignedInOfficer;
+import net.pkhapps.roihu.base.ui.ViewTitle;
+import net.pkhapps.roihu.scenario.PreparedLanguage;
+import net.pkhapps.roihu.scenario.Scenario;
+import net.pkhapps.roihu.scenario.ScenarioContent;
+import net.pkhapps.roihu.scenario.ScenarioId;
+import net.pkhapps.roihu.scenario.ScenarioPosition;
+import net.pkhapps.roihu.scenario.Scenarios;
+import org.jspecify.annotations.Nullable;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
+import java.util.function.Consumer;
+
+/** Where an officer writes a scenario: any scenario, whoever created it. */
+@Route("scenarios/edit/:id?")
+@PageTitle("Roihu")
+@RolesAllowed(Roles.OFFICER)
+public class ScenarioEditorView extends Composite<VerticalLayout> implements BeforeEnterObserver {
+
+    private static final String ID = "id";
+
+    private final Scenarios scenarios;
+    private final SignedInOfficer officer;
+    private final TextField name = new TextField();
+    private final Select<PreparedLanguage> preparedLanguage = new Select<>();
+    private final TextArea description = new TextArea();
+    private final Grid<PositionRow> positions = new Grid<>();
+    private final GridListDataView<PositionRow> positionRows = positions.setItems(new ArrayList<>());
+    private final Paragraph provenance = new Paragraph();
+    /** The position being dragged into a new place, while one is. */
+    private @Nullable PositionRow dragged;
+    /** The scenario being edited, or nothing while a new one is being written. */
+    private @Nullable ScenarioId editing;
+
+    ScenarioEditorView(Scenarios scenarios, SignedInOfficer officer) {
+        this.scenarios = scenarios;
+        this.officer = officer;
+        name.setLabel(getTranslation("editor.name"));
+        name.setRequiredIndicatorVisible(true);
+        name.setErrorMessage(getTranslation("editor.name.missing"));
+        name.addValueChangeListener(event -> name.setInvalid(false));
+        preparedLanguage.setLabel(getTranslation("editor.prepared-language"));
+        preparedLanguage.setItems(PreparedLanguage.values());
+        preparedLanguage.setItemLabelGenerator(language -> getTranslation("prepared-language." + language));
+        name.setWidthFull();
+        description.setWidthFull();
+        description.setLabel(getTranslation("editor.description"));
+        description.setHelperText(getTranslation("editor.description.helper"));
+        var addPosition = new Button(getTranslation("editor.positions.add"),
+                event -> positionRows.addItem(new PositionRow()));
+        var save = new Button(getTranslation("editor.save"), event -> save());
+        save.addThemeVariants(ButtonVariant.PRIMARY);
+        getContent().add(new ViewTitle(getTranslation("editor.title")), provenance, name, preparedLanguage, description,
+                new H2(getTranslation("editor.positions")), createPositions(), addPosition, save);
+    }
+
+    static RouteParameters parametersFor(ScenarioId scenario) {
+        return new RouteParameters(ID, scenario.value().toString());
+    }
+
+    /**
+     * Fills the form afresh on every entry: navigating from one scenario to another, or to a new
+     * one, reuses this view rather than building another.
+     */
+    @Override
+    public void beforeEnter(BeforeEnterEvent event) {
+        var id = event.getRouteParameters().get(ID);
+        if (id.isEmpty()) {
+            showNew();
+            return;
+        }
+        var scenario = parse(id.get()).flatMap(scenarios::get);
+        if (scenario.isEmpty()) {
+            event.forwardTo(ScenarioLibraryView.class);
+            return;
+        }
+        show(scenario.get());
+    }
+
+    private static Optional<ScenarioId> parse(String id) {
+        try {
+            return Optional.of(new ScenarioId(UUID.fromString(id)));
+        } catch (IllegalArgumentException malformed) {
+            return Optional.empty();
+        }
+    }
+
+    private void showNew() {
+        editing = null;
+        fill(new ScenarioContent("", defaultPreparedLanguage(), Optional.empty(), List.of()));
+        provenance.setText("");
+        provenance.setVisible(false);
+    }
+
+    private void show(Scenario scenario) {
+        editing = scenario.id();
+        fill(scenario.content());
+        provenance.setText(getTranslation("editor.provenance",
+                Changes.describe(scenario.created(), getLocale()),
+                Changes.describe(scenario.lastChanged(), getLocale())));
+        provenance.setVisible(true);
+    }
+
+    private void fill(ScenarioContent content) {
+        name.setValue(content.name());
+        name.setInvalid(false);
+        preparedLanguage.setValue(content.preparedLanguage());
+        description.setValue(content.description().orElse(""));
+        positionRows.removeItems(positionRows.getItems().toList());
+        positionRows.addItems(content.positions().stream().map(PositionRow::new).toList());
+    }
+
+    private Grid<PositionRow> createPositions() {
+        positions.addComponentColumn(row -> {
+                    var field = positionField(row.name, "editor.positions.name", value -> {
+                        row.name = value;
+                        row.nameMissing = false;
+                    });
+                    field.setErrorMessage(getTranslation("editor.positions.name.missing"));
+                    field.setInvalid(row.nameMissing);
+                    return field;
+                })
+                .setKey("name").setHeader(getTranslation("editor.positions.name"));
+        positions.addComponentColumn(row -> positionField(row.callSign, "editor.positions.call-sign",
+                        value -> row.callSign = value))
+                .setKey("call-sign").setHeader(getTranslation("editor.positions.call-sign"));
+        positions.addComponentColumn(row -> {
+            var remove = new Button(getTranslation("editor.positions.remove"),
+                    event -> positionRows.removeItem(row));
+            remove.addThemeVariants(ButtonVariant.TERTIARY);
+            return remove;
+        }).setKey("remove").setFlexGrow(0).setAutoWidth(true);
+        positions.setAllRowsVisible(true);
+        positions.setRowsDraggable(true);
+        positions.setDropMode(GridDropMode.BETWEEN);
+        positions.addDragStartListener(event -> dragged = event.getDraggedItems().getFirst());
+        positions.addDragEndListener(event -> dragged = null);
+        positions.addDropListener(event -> event.getDropTargetItem().ifPresent(target -> {
+            var moved = dragged;
+            if (moved == null || moved == target) {
+                return;
+            }
+            positionRows.removeItem(moved);
+            if (event.getDropLocation() == GridDropLocation.BELOW) {
+                positionRows.addItemAfter(moved, target);
+            } else {
+                positionRows.addItemBefore(moved, target);
+            }
+        }));
+        return positions;
+    }
+
+    private TextField positionField(String value, String label, Consumer<String> onChange) {
+        var field = new TextField();
+        field.setValue(value);
+        field.setAriaLabel(getTranslation(label));
+        field.setWidthFull();
+        field.addValueChangeListener(event -> onChange.accept(event.getValue()));
+        return field;
+    }
+
+    /** Officers usually prepare scenarios in the language they work in. */
+    private PreparedLanguage defaultPreparedLanguage() {
+        return InterfaceLanguage.of(getLocale())
+                .map(language -> PreparedLanguage.fromCode(language.code()))
+                .orElse(PreparedLanguage.FINNISH);
+    }
+
+    private void save() {
+        var rows = positionRows.getItems().toList();
+        rows.forEach(row -> row.nameMissing = row.name.isBlank());
+        positionRows.refreshAll();
+        name.setInvalid(name.getValue().isBlank());
+        if (name.isInvalid() || rows.stream().anyMatch(row -> row.nameMissing)) {
+            return;
+        }
+        var content = new ScenarioContent(name.getValue().strip(), preparedLanguage.getValue(),
+                Optional.of(description.getValue()).filter(text -> !text.isBlank()),
+                rows.stream().map(PositionRow::toPosition).toList());
+        if (editing == null) {
+            scenarios.create(content, officer.get());
+        } else {
+            scenarios.save(editing, content, officer.get());
+        }
+        getUI().ifPresent(ui -> ui.navigate(ScenarioLibraryView.class));
+    }
+
+    /**
+     * A position as it is being edited. Compared by identity, so that two positions written alike
+     * are still two rows.
+     */
+    private static final class PositionRow {
+        private String name = "";
+        private String callSign = "";
+        private boolean nameMissing;
+
+        PositionRow() {
+        }
+
+        PositionRow(ScenarioPosition position) {
+            name = position.name();
+            callSign = position.callSign().orElse("");
+        }
+
+        ScenarioPosition toPosition() {
+            return new ScenarioPosition(name.strip(), Optional.of(callSign.strip()).filter(text -> !text.isEmpty()));
+        }
+    }
+}

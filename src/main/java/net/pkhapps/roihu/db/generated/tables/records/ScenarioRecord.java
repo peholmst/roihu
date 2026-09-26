@@ -4,6 +4,7 @@
 package net.pkhapps.roihu.db.generated.tables.records;
 
 
+import java.time.OffsetDateTime;
 import java.util.UUID;
 
 import net.pkhapps.roihu.db.generated.enums.PreparedLanguage;
@@ -63,6 +64,76 @@ public class ScenarioRecord extends UpdatableRecordImpl<ScenarioRecord> {
         return (PreparedLanguage) get(2);
     }
 
+    /**
+     * Setter for <code>public.scenario.description</code>.
+     */
+    public void setDescription(String value) {
+        set(3, value);
+    }
+
+    /**
+     * Getter for <code>public.scenario.description</code>.
+     */
+    public String getDescription() {
+        return (String) get(3);
+    }
+
+    /**
+     * Setter for <code>public.scenario.created_by</code>.
+     */
+    public void setCreatedBy(String value) {
+        set(4, value);
+    }
+
+    /**
+     * Getter for <code>public.scenario.created_by</code>.
+     */
+    public String getCreatedBy() {
+        return (String) get(4);
+    }
+
+    /**
+     * Setter for <code>public.scenario.created_at</code>.
+     */
+    public void setCreatedAt(OffsetDateTime value) {
+        set(5, value);
+    }
+
+    /**
+     * Getter for <code>public.scenario.created_at</code>.
+     */
+    public OffsetDateTime getCreatedAt() {
+        return (OffsetDateTime) get(5);
+    }
+
+    /**
+     * Setter for <code>public.scenario.last_changed_by</code>.
+     */
+    public void setLastChangedBy(String value) {
+        set(6, value);
+    }
+
+    /**
+     * Getter for <code>public.scenario.last_changed_by</code>.
+     */
+    public String getLastChangedBy() {
+        return (String) get(6);
+    }
+
+    /**
+     * Setter for <code>public.scenario.last_changed_at</code>.
+     */
+    public void setLastChangedAt(OffsetDateTime value) {
+        set(7, value);
+    }
+
+    /**
+     * Getter for <code>public.scenario.last_changed_at</code>.
+     */
+    public OffsetDateTime getLastChangedAt() {
+        return (OffsetDateTime) get(7);
+    }
+
     // -------------------------------------------------------------------------
     // Primary key information
     // -------------------------------------------------------------------------
@@ -86,12 +157,17 @@ public class ScenarioRecord extends UpdatableRecordImpl<ScenarioRecord> {
     /**
      * Create a detached, initialised ScenarioRecord
      */
-    public ScenarioRecord(UUID id, String name, PreparedLanguage preparedLanguage) {
+    public ScenarioRecord(UUID id, String name, PreparedLanguage preparedLanguage, String description, String createdBy, OffsetDateTime createdAt, String lastChangedBy, OffsetDateTime lastChangedAt) {
         super(Scenario.SCENARIO);
 
         setId(id);
         setName(name);
         setPreparedLanguage(preparedLanguage);
+        setDescription(description);
+        setCreatedBy(createdBy);
+        setCreatedAt(createdAt);
+        setLastChangedBy(lastChangedBy);
+        setLastChangedAt(lastChangedAt);
         resetTouchedOnNotNull();
     }
 }

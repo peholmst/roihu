@@ -18,7 +18,7 @@ import org.springframework.security.oauth2.core.oidc.user.OidcUser;
  */
 @Route("")
 @PageTitle("Roihu")
-@Menu(title = "Start", order = 0)
+@Menu(title = "menu.start", order = 0)
 @RolesAllowed(Roles.OFFICER)
 public class StartView extends Composite<VerticalLayout> {
 

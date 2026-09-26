@@ -2,6 +2,7 @@ package net.pkhapps.roihu.exercise;
 
 import net.pkhapps.roihu.IntegrationTest;
 import net.pkhapps.roihu.scenario.PreparedLanguage;
+import net.pkhapps.roihu.scenario.ScenarioContent;
 import net.pkhapps.roihu.scenario.ScenarioId;
 import net.pkhapps.roihu.scenario.ScenarioPosition;
 import net.pkhapps.roihu.scenario.Scenarios;
@@ -20,6 +21,7 @@ import java.util.concurrent.CyclicBarrier;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import static net.pkhapps.roihu.TestOfficers.ANNA;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.tuple;
 import static org.assertj.core.api.InstanceOfAssertFactories.type;
@@ -38,10 +40,11 @@ class CrewJoiningTest {
 
     @Test
     void theJoinCodeFindsTheExerciseWithItsPositionsInScenarioOrder() {
-        var scenario = scenarios.create("Warehouse fire", PreparedLanguage.FINNISH, List.of(
+        var scenario = scenarios.create(new ScenarioContent("Warehouse fire",
+                PreparedLanguage.FINNISH, Optional.empty(), List.of(
                 new ScenarioPosition("Officer", Optional.of("RVSP911")),
                 new ScenarioPosition("Pump operator", Optional.of("RVS911K")),
-                new ScenarioPosition("Safety officer", Optional.empty())));
+                new ScenarioPosition("Safety officer", Optional.empty()))), ANNA);
         var joinCode = exercises.createFrom(scenario);
 
         var exercise = crewJoining.findExercise(joinCode.toString()).orElseThrow();
@@ -275,13 +278,15 @@ class CrewJoiningTest {
     }
 
     private ScenarioId twoPositions() {
-        return scenarios.create("Warehouse fire", PreparedLanguage.FINNISH, List.of(
+        return scenarios.create(new ScenarioContent("Warehouse fire",
+                PreparedLanguage.FINNISH, Optional.empty(), List.of(
                 new ScenarioPosition("Officer", Optional.of("RVSP911")),
-                new ScenarioPosition("Pump operator", Optional.of("RVS911K"))));
+                new ScenarioPosition("Pump operator", Optional.of("RVS911K")))), ANNA);
     }
 
     private ScenarioId aScenario() {
-        return scenarios.create("Warehouse fire", PreparedLanguage.FINNISH,
-                List.of(new ScenarioPosition("Officer", Optional.of("RVSP911"))));
+        return scenarios.create(new ScenarioContent("Warehouse fire",
+                PreparedLanguage.FINNISH, Optional.empty(),
+                List.of(new ScenarioPosition("Officer", Optional.of("RVSP911")))), ANNA);
     }
 }
