@@ -8,6 +8,7 @@ import com.vaadin.browserless.mocks.MockRequest;
 import com.vaadin.browserless.mocks.MockResponse;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.html.H1;
+import com.vaadin.flow.component.internal.PendingJavaScriptInvocation;
 import com.vaadin.flow.component.textfield.TextField;
 import com.vaadin.flow.server.VaadinService;
 import com.vaadin.flow.server.VaadinServletRequest;
@@ -125,6 +126,30 @@ class InterfaceLanguageTest {
                 .contains("Övningen har inte börjat ännu")
                 .contains("Inspel som visas för RVS911K · Pump operator kommer att synas här")
                 .contains("Byt befattning");
+    }
+
+    @Test
+    void thePageDeclaresTheLanguageItSpeaks() {
+        var window = aBrowserPreferring(Locale.of("sv", "FI")).newWindow();
+        window.navigate(JoinView.class);
+        assertThat(pageLanguage(window)).contains("sv");
+
+        window.test(window.find(Button.class).withText("FI").single()).click();
+
+        assertThat(pageLanguage(window)).contains("fi");
+    }
+
+    /**
+     * The language the page was last told it is in, so that a screen reader reads it with the
+     * right voice, or nothing if it has not been told since it was last asked.
+     */
+    private static Optional<String> pageLanguage(BrowserlessUIContext window) {
+        window.roundTrip();
+        return window.getUI().getInternals().dumpPendingJavaScriptInvocations().stream()
+                .map(PendingJavaScriptInvocation::getInvocation)
+                .filter(invocation -> invocation.getExpression().contains("document.documentElement.lang"))
+                .map(invocation -> String.valueOf(invocation.getParameters().getFirst()))
+                .reduce((earlier, later) -> later);
     }
 
     /** The cookies the browser holds after what {@code window} did: the ones it was given. */

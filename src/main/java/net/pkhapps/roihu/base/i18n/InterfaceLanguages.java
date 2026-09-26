@@ -1,9 +1,11 @@
 package net.pkhapps.roihu.base.i18n;
 
+import com.vaadin.flow.component.UI;
 import com.vaadin.flow.server.ServiceInitEvent;
 import com.vaadin.flow.server.VaadinRequest;
 import com.vaadin.flow.server.VaadinService;
 import com.vaadin.flow.server.VaadinServiceInitListener;
+import com.vaadin.flow.signals.Signal;
 import org.jspecify.annotations.Nullable;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
@@ -28,8 +30,20 @@ class InterfaceLanguages implements VaadinServiceInitListener {
 
     @Override
     public void serviceInit(ServiceInitEvent event) {
-        event.getSource().addUIInitListener(uiInit -> uiInit.getUI()
-                .setLocale(chooseFor(VaadinService.getCurrentRequest()).locale()));
+        event.getSource().addUIInitListener(uiInit -> {
+            var ui = uiInit.getUI();
+            ui.setLocale(chooseFor(VaadinService.getCurrentRequest()).locale());
+            declareLanguageOfPage(ui);
+        });
+    }
+
+    /**
+     * Keeps the page's own lang in step with the interface, so that a screen reader reads it
+     * with the right voice. Flow sets the locale of components only, never of the page.
+     */
+    private static void declareLanguageOfPage(UI ui) {
+        Signal.effect(ui, () -> ui.getPage().executeJs("document.documentElement.lang = $0",
+                ui.localeSignal().get().toLanguageTag()));
     }
 
     private InterfaceLanguage chooseFor(@Nullable VaadinRequest request) {

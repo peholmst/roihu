@@ -37,6 +37,6 @@ Done in 6c62908. Found during implementation and review:
   language and cookies through a window opened and closed before the one under test.
 - Checked by hand: an English browser opens in English, and choosing Finnish survives a reload.
 - Not covered by tests: a `roihu.default-language` other than Finnish.
-- Follow-up: `<html lang>` stays `en` whatever the interface speaks, so screen readers read
-  Finnish and Swedish with an English voice.
+- Follow-up, since fixed: `<html lang>` stayed `en` whatever the interface spoke, so screen
+  readers read Finnish and Swedish with an English voice. It now follows the UI's locale.
 - Codex review found nothing to change.
