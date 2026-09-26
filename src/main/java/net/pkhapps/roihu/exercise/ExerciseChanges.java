@@ -12,9 +12,9 @@ import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Tells whoever follows an exercise that something about it changed: a position was taken, taken
- * over or released, or the exercise changed state. It says only that, never what: followers read
- * the database again, which alone decides every change. In-process, so it assumes a single
- * application node.
+ * over or released, or the exercise changed state or was deleted. It says only that, never what:
+ * followers read the database again, which alone decides every change. In-process, so it assumes
+ * a single application node.
  */
 @Component
 class ExerciseChanges {

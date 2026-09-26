@@ -22,6 +22,7 @@ import java.util.stream.IntStream;
 
 import static net.pkhapps.roihu.TestOfficers.ANNA;
 import static net.pkhapps.roihu.TestOfficers.BERTIL;
+import static net.pkhapps.roihu.TestExercises.startAndEnd;
 import static org.assertj.core.api.Assertions.assertThat;
 
 @IntegrationTest
@@ -38,7 +39,7 @@ class ExercisesViewTest extends SpringBrowserlessTest {
     void theStartScreenListsExercisesUnderWayFirstWithTheirScenarioStateCreatorTimeAndPositionsTaken(
             @Autowired CrewJoining crewJoining) {
         var ended = created(scenario("Harbour fire"), ANNA);
-        exercises.end(ended.joinCode());
+        startAndEnd(exercises, ended);
         var inSetup = created(scenario("Quarry fire"), BERTIL);
         var officer = crewJoining.findExercise(inSetup.joinCode().toString()).orElseThrow().positions().getFirst();
         crewJoining.take(inSetup.joinCode().toString(), officer.id());

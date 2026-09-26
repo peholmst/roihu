@@ -4,6 +4,7 @@ import net.pkhapps.roihu.base.security.Officer;
 import net.pkhapps.roihu.scenario.Change;
 import net.pkhapps.roihu.scenario.ScenarioId;
 import org.jooq.DSLContext;
+import org.jooq.Field;
 import org.jooq.impl.DSL;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -17,12 +18,18 @@ import java.util.UUID;
 import java.util.function.Supplier;
 import java.util.random.RandomGenerator;
 
+
 import static net.pkhapps.roihu.db.generated.Tables.*;
 
 /** Runs of scenarios, as the training officers who run them see them. */
 @Service
 public class Exercises {
 
+    /** The stored states, whose generated type's name clashes with {@link ExerciseState}. */
+    private static final net.pkhapps.roihu.db.generated.enums.ExerciseState STORED_SETUP =
+            net.pkhapps.roihu.db.generated.enums.ExerciseState.setup;
+    private static final net.pkhapps.roihu.db.generated.enums.ExerciseState STORED_RUNNING =
+            net.pkhapps.roihu.db.generated.enums.ExerciseState.running;
     private static final net.pkhapps.roihu.db.generated.enums.ExerciseState STORED_ENDED =
             net.pkhapps.roihu.db.generated.enums.ExerciseState.ended;
 
@@ -40,6 +47,15 @@ public class Exercises {
         this.db = db;
         this.changes = changes;
         this.randomness = randomness;
+    }
+
+    /**
+     * Calls {@code onChange} whenever the exercise changes state, is deleted, or has a position
+     * taken, taken over or released. It may be called from any thread, and only says that
+     * something changed: read the exercise again to find out what.
+     */
+    public Subscription subscribe(JoinCode joinCode, Runnable onChange) {
+        return changes.subscribe(joinCode, onChange);
     }
 
     /**
@@ -74,7 +90,9 @@ public class Exercises {
                 .fetchOptional(exercise -> new Exercise(id, exercise.getScenarioName(),
                         ExerciseStates.of(exercise.getState()),
                         JoinCode.parse(exercise.getJoinCode()).orElseThrow(),
-                        new Change(new Officer(exercise.getCreatedBy()), exercise.getCreatedAt().toInstant())));
+                        new Change(new Officer(exercise.getCreatedBy()), exercise.getCreatedAt().toInstant()),
+                        Optional.ofNullable(exercise.getStartedAt()).map(OffsetDateTime::toInstant),
+                        Optional.ofNullable(exercise.getEndedAt()).map(OffsetDateTime::toInstant)));
     }
 
     /**
@@ -123,16 +141,64 @@ public class Exercises {
     }
 
     /**
-     * Ends the exercise, after which it admits nobody. Unguarded for now: the lifecycle's rules
-     * arrive with the officer's controls.
+     * Starts the exercise, whether or not anyone has taken a position yet: the officer decides
+     * when the crew is ready. Refused unless it is in setup.
      */
     @Transactional
-    public void end(JoinCode joinCode) {
-        db.update(EXERCISE)
-                .set(EXERCISE.STATE, STORED_ENDED)
-                .set(EXERCISE.ENDED_AT, DSL.currentOffsetDateTime())
-                .where(EXERCISE.JOIN_CODE.eq(joinCode.value()))
-                .execute();
-        changes.publish(joinCode);
+    public LifecycleResult start(ExerciseId id) {
+        return move(id, STORED_SETUP, STORED_RUNNING, EXERCISE.STARTED_AT);
+    }
+
+    /** Ends the running exercise for good, after which it admits nobody. */
+    @Transactional
+    public LifecycleResult end(ExerciseId id) {
+        return move(id, STORED_RUNNING, STORED_ENDED, EXERCISE.ENDED_AT);
+    }
+
+    /**
+     * Deletes the exercise with its positions, releasing whoever holds them, so that the officer
+     * can create it again after noticing a mistake. Refused once it has started: from then on it
+     * is a record.
+     */
+    @Transactional
+    public LifecycleResult delete(ExerciseId id) {
+        var deleted = db.deleteFrom(EXERCISE)
+                .where(EXERCISE.ID.eq(id.value()))
+                .and(EXERCISE.STATE.eq(STORED_SETUP))
+                .returning(EXERCISE.JOIN_CODE)
+                .fetchOptional(EXERCISE.JOIN_CODE)
+                .flatMap(JoinCode::parse);
+        return deleted.map(this::published).orElseGet(() -> refusal(id));
+    }
+
+    /**
+     * Moves the exercise on in one update guarded by the state it moves from, so that of two
+     * officers moving it at once, the database lets exactly one through.
+     */
+    private LifecycleResult move(ExerciseId id, net.pkhapps.roihu.db.generated.enums.ExerciseState from,
+                                 net.pkhapps.roihu.db.generated.enums.ExerciseState to,
+                                 Field<OffsetDateTime> when) {
+        var moved = db.update(EXERCISE)
+                .set(EXERCISE.STATE, to)
+                .set(when, DSL.currentOffsetDateTime())
+                .where(EXERCISE.ID.eq(id.value()))
+                .and(EXERCISE.STATE.eq(from))
+                .returning(EXERCISE.JOIN_CODE)
+                .fetchOptional(EXERCISE.JOIN_CODE)
+                .flatMap(JoinCode::parse);
+        return moved.map(this::published).orElseGet(() -> refusal(id));
+    }
+
+    private LifecycleResult published(JoinCode changed) {
+        changes.publish(changed);
+        return new LifecycleResult.Done();
+    }
+
+    private LifecycleResult refusal(ExerciseId id) {
+        return db.select(EXERCISE.STATE).from(EXERCISE)
+                .where(EXERCISE.ID.eq(id.value()))
+                .fetchOptional(EXERCISE.STATE)
+                .<LifecycleResult>map(state -> new LifecycleResult.Refused(ExerciseStates.of(state)))
+                .orElseGet(LifecycleResult.Gone::new);
     }
 }

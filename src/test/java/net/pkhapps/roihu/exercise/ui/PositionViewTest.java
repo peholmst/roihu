@@ -19,6 +19,7 @@ import jakarta.servlet.ServletResponse;
 import jakarta.servlet.ServletResponseWrapper;
 import net.pkhapps.roihu.IntegrationTest;
 import net.pkhapps.roihu.exercise.CrewJoining;
+import net.pkhapps.roihu.exercise.CreateResult;
 import net.pkhapps.roihu.exercise.Exercises;
 import net.pkhapps.roihu.exercise.JoinCode;
 import net.pkhapps.roihu.scenario.PreparedLanguage;
@@ -33,7 +34,8 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Optional;
 
-import static net.pkhapps.roihu.TestExercises.joinCodeOf;
+import static net.pkhapps.roihu.TestExercises.created;
+import static net.pkhapps.roihu.TestExercises.startAndEnd;
 import static net.pkhapps.roihu.TestOfficers.ANNA;
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -133,13 +135,43 @@ class PositionViewTest extends SpringBrowserlessTest {
     }
 
     @Test
+    void thePositionScreenShowsTheExerciseStartingAsSoonAsItStarts() {
+        var exercise = aCreatedExercise();
+        navigate("join/" + exercise.joinCode() + "/positions", PositionPickerView.class);
+        test(find(Button.class).withText("RVS911K · Pump operator").single()).click();
+        var position = (PositionView) getCurrentView();
+
+        exercises.start(exercise.id());
+
+        receivePush(position);
+        assertThat(getCurrentView().getElement().getTextRecursively())
+                .contains("RVS911K · Pump operator")
+                .contains("Exercise running");
+        assertThat(find(Button.class).withText("Change position").all()).hasSize(1);
+    }
+
+    @Test
+    void aHolderIsSentToTheJoinScreenAsSoonAsTheExerciseIsDeleted() {
+        var exercise = aCreatedExercise();
+        navigate("join/" + exercise.joinCode() + "/positions", PositionPickerView.class);
+        test(find(Button.class).withText("RVS911K · Pump operator").single()).click();
+        var position = (PositionView) getCurrentView();
+
+        exercises.delete(exercise.id());
+
+        receivePush(position);
+        assertThat(getCurrentView()).isInstanceOf(JoinView.class);
+    }
+
+    @Test
     void thePositionScreenShowsTheExerciseEndingAsSoonAsItEnds() {
-        var joinCode = anExercise();
+        var exercise = aCreatedExercise();
+        var joinCode = exercise.joinCode();
         navigate("join/" + joinCode + "/positions", PositionPickerView.class);
         test(find(Button.class).withText("RVS911K · Pump operator").single()).click();
         var position = (PositionView) getCurrentView();
 
-        exercises.end(joinCode);
+        startAndEnd(exercises, exercise);
 
         receivePush(position);
         assertThat(getCurrentView().getElement().getTextRecursively())
@@ -151,11 +183,12 @@ class PositionViewTest extends SpringBrowserlessTest {
 
     @Test
     void onceTheExerciseHasEndedTheHolderKeepsThePositionButCannotChangeIt() {
-        var joinCode = anExercise();
+        var exercise = aCreatedExercise();
+        var joinCode = exercise.joinCode();
         navigate("join/" + joinCode + "/positions", PositionPickerView.class);
         test(find(Button.class).withText("RVS911K · Pump operator").single()).click();
 
-        exercises.end(joinCode);
+        startAndEnd(exercises, exercise);
 
         navigate("join/" + joinCode, PositionView.class);
         assertThat(getCurrentView().getElement().getTextRecursively()).contains("Exercise ended");
@@ -164,10 +197,11 @@ class PositionViewTest extends SpringBrowserlessTest {
 
     @Test
     void aHolderFindsTheirPositionAfterTheExerciseHasEndedHoweverTheyComeBack() {
-        var joinCode = anExercise();
+        var exercise = aCreatedExercise();
+        var joinCode = exercise.joinCode();
         navigate("join/" + joinCode + "/positions", PositionPickerView.class);
         test(find(Button.class).withText("RVS911K · Pump operator").single()).click();
-        exercises.end(joinCode);
+        startAndEnd(exercises, exercise);
 
         navigate("join/" + joinCode + "/positions", PositionView.class);
 
@@ -219,7 +253,11 @@ class PositionViewTest extends SpringBrowserlessTest {
     }
 
     private JoinCode anExercise() {
-        return joinCodeOf(exercises.createFrom(scenarios.create(new ScenarioContent("Warehouse fire",
+        return aCreatedExercise().joinCode();
+    }
+
+    private CreateResult.Created aCreatedExercise() {
+        return created(exercises.createFrom(scenarios.create(new ScenarioContent("Warehouse fire",
                 PreparedLanguage.FINNISH, Optional.empty(), List.of(
                 new ScenarioPosition("Officer", Optional.of("RVSP911")),
                 new ScenarioPosition("Pump operator", Optional.of("RVS911K")))), ANNA), ANNA));

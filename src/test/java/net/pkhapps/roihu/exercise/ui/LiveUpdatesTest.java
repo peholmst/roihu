@@ -6,6 +6,7 @@ import com.vaadin.browserless.SpringBrowserlessApplicationContext;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.confirmdialog.ConfirmDialog;
 import net.pkhapps.roihu.IntegrationTest;
+import net.pkhapps.roihu.exercise.CreateResult;
 import net.pkhapps.roihu.exercise.Exercises;
 import net.pkhapps.roihu.exercise.JoinCode;
 import net.pkhapps.roihu.scenario.PreparedLanguage;
@@ -22,7 +23,8 @@ import org.springframework.security.core.Authentication;
 import java.util.List;
 import java.util.Optional;
 
-import static net.pkhapps.roihu.TestExercises.joinCodeOf;
+import static net.pkhapps.roihu.TestExercises.created;
+import static net.pkhapps.roihu.TestExercises.startAndEnd;
 import static net.pkhapps.roihu.TestOfficers.ANNA;
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -120,11 +122,12 @@ class LiveUpdatesTest {
 
     @Test
     void thePickerLeavesForTheJoinScreenWhenTheExerciseEnds() {
-        var joinCode = anExercise();
+        var exercise = aCreatedExercise();
+        var joinCode = exercise.joinCode();
         var watching = app.newUser().newWindow();
         watching.navigate("join/" + joinCode + "/positions", PositionPickerView.class);
 
-        exercises.end(joinCode);
+        startAndEnd(exercises, exercise);
 
         receivePush(watching);
         assertThat(watching.getCurrentView()).isInstanceOf(JoinView.class);
@@ -166,7 +169,11 @@ class LiveUpdatesTest {
     }
 
     private JoinCode anExercise() {
-        return joinCodeOf(exercises.createFrom(scenarios.create(new ScenarioContent("Warehouse fire",
+        return aCreatedExercise().joinCode();
+    }
+
+    private CreateResult.Created aCreatedExercise() {
+        return created(exercises.createFrom(scenarios.create(new ScenarioContent("Warehouse fire",
                 PreparedLanguage.FINNISH, Optional.empty(), List.of(
                 new ScenarioPosition("Officer", Optional.of("RVSP911")),
                 new ScenarioPosition("Pump operator", Optional.of("RVS911K")))), ANNA), ANNA));

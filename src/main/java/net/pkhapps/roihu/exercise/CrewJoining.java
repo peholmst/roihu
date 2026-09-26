@@ -3,6 +3,8 @@ package net.pkhapps.roihu.exercise;
 import net.pkhapps.roihu.scenario.PreparedLanguage;
 import org.jooq.Condition;
 import org.jooq.DSLContext;
+import org.jooq.Record2;
+import org.jooq.Select;
 import org.jooq.impl.DSL;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -32,8 +34,8 @@ public class CrewJoining {
 
     /**
      * Calls {@code onChange} whenever a position of the exercise is taken, taken over or
-     * released, or the exercise changes state. It may be called from any thread, and only says
-     * that something changed: read the exercise again to find out what.
+     * released, or the exercise changes state or is deleted. It may be called from any thread,
+     * and only says that something changed: read the exercise again to find out what.
      */
     public Subscription subscribe(JoinCode joinCode, Runnable onChange) {
         return changes.subscribe(joinCode, onChange);
@@ -77,9 +79,7 @@ public class CrewJoining {
         var joinable = joinablePosition(joinCode.get(), position);
         var token = HolderToken.random(random);
         var inserted = db.insertInto(HOLDING, HOLDING.EXERCISE_POSITION_ID, HOLDING.TOKEN_HASH)
-                .select(db.select(EXERCISE_POSITION.ID, DSL.val(token.hash()))
-                        .from(EXERCISE_POSITION)
-                        .where(joinable))
+                .select(claimable(joinable, token))
                 .onConflict(HOLDING.EXERCISE_POSITION_ID).doNothing()
                 .execute();
         if (inserted == 1) {
@@ -104,9 +104,7 @@ public class CrewJoining {
         }
         var token = HolderToken.random(random);
         var taken = db.insertInto(HOLDING, HOLDING.EXERCISE_POSITION_ID, HOLDING.TOKEN_HASH)
-                .select(db.select(EXERCISE_POSITION.ID, DSL.val(token.hash()))
-                        .from(EXERCISE_POSITION)
-                        .where(joinablePosition(joinCode.get(), position)))
+                .select(claimable(joinablePosition(joinCode.get(), position), token))
                 .onConflict(HOLDING.EXERCISE_POSITION_ID).doUpdate()
                 .set(HOLDING.TOKEN_HASH, token.hash())
                 .execute();
@@ -115,6 +113,18 @@ public class CrewJoining {
         }
         changes.publish(joinCode.get());
         return new TakeResult.Taken(token);
+    }
+
+    /**
+     * The position to hold, locked until the holding commits. An officer deleting the exercise
+     * at the same moment then either waits for the holding, which goes with the position, or
+     * deletes the position first, which leaves nothing to hold.
+     */
+    private Select<Record2<UUID, byte[]>> claimable(Condition joinable, HolderToken token) {
+        return db.select(EXERCISE_POSITION.ID, DSL.val(token.hash()))
+                .from(EXERCISE_POSITION)
+                .where(joinable)
+                .forKeyShare();
     }
 
     private static Condition joinablePosition(JoinCode joinCode, PositionId position) {

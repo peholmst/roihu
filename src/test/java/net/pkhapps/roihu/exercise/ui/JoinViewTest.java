@@ -8,6 +8,7 @@ import net.pkhapps.roihu.exercise.Exercises;
 import net.pkhapps.roihu.exercise.JoinCode;
 import net.pkhapps.roihu.scenario.PreparedLanguage;
 import net.pkhapps.roihu.scenario.ScenarioContent;
+import net.pkhapps.roihu.scenario.ScenarioId;
 import net.pkhapps.roihu.scenario.ScenarioPosition;
 import net.pkhapps.roihu.scenario.Scenarios;
 import org.junit.jupiter.api.Test;
@@ -18,7 +19,9 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
 
+import static net.pkhapps.roihu.TestExercises.created;
 import static net.pkhapps.roihu.TestExercises.joinCodeOf;
+import static net.pkhapps.roihu.TestExercises.startAndEnd;
 import static net.pkhapps.roihu.TestOfficers.ANNA;
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -105,9 +108,30 @@ class JoinViewTest extends SpringBrowserlessTest {
         assertThat(code.getErrorMessage()).isEqualTo("No exercise with this code");
     }
 
+    @Test
+    void theCodeOfAnEndedOrDeletedExerciseFindsNoExerciseLikeAnyUnknownCode() {
+        var ended = created(exercises.createFrom(aScenario(), ANNA));
+        startAndEnd(exercises, ended);
+        var deleted = created(exercises.createFrom(aScenario(), ANNA));
+        exercises.delete(deleted.id());
+
+        for (var joinCode : List.of(ended.joinCode(), deleted.joinCode())) {
+            navigate(JoinView.class);
+            var code = find(TextField.class).single();
+            test(code).setValue(joinCode.toString());
+            test(find(Button.class).withText("Join").single()).click();
+
+            assertThat(getCurrentView()).isInstanceOf(JoinView.class);
+            assertThat(code.getErrorMessage()).isEqualTo("No exercise with this code");
+        }
+    }
+
     private JoinCode anExercise() {
-        return joinCodeOf(exercises.createFrom(scenarios.create(new ScenarioContent("Warehouse fire",
-                PreparedLanguage.FINNISH, Optional.empty(),
-                List.of(new ScenarioPosition("Officer", Optional.of("RVSP911")))), ANNA), ANNA));
+        return joinCodeOf(exercises.createFrom(aScenario(), ANNA));
+    }
+
+    private ScenarioId aScenario() {
+        return scenarios.create(new ScenarioContent("Warehouse fire", PreparedLanguage.FINNISH, Optional.empty(),
+                List.of(new ScenarioPosition("Officer", Optional.of("RVSP911")))), ANNA);
     }
 }

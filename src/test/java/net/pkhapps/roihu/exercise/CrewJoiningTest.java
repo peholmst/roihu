@@ -21,7 +21,9 @@ import java.util.concurrent.CyclicBarrier;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import static net.pkhapps.roihu.TestExercises.created;
 import static net.pkhapps.roihu.TestExercises.joinCodeOf;
+import static net.pkhapps.roihu.TestExercises.startAndEnd;
 import static net.pkhapps.roihu.TestOfficers.ANNA;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.tuple;
@@ -82,11 +84,46 @@ class CrewJoiningTest {
 
     @Test
     void anEndedExerciseAdmitsNobody() {
-        var joinCode = joinCodeOf(exercises.createFrom(aScenario(), ANNA));
+        var exercise = created(exercises.createFrom(aScenario(), ANNA));
+        var joinCode = exercise.joinCode();
 
-        exercises.end(joinCode);
+        startAndEnd(exercises, exercise);
 
         assertThat(crewJoining.findExercise(joinCode.toString())).isEmpty();
+    }
+
+    @Test
+    void crewMembersTakingPositionsAsTheExerciseIsDeletedAreToldItAdmitsNobody() throws Exception {
+        for (var attempt = 0; attempt < 20; attempt++) {
+            var exercise = created(exercises.createFrom(twoPositions(), ANNA));
+            var joinCode = exercise.joinCode().toString();
+            var positions = crewJoining.findExercise(joinCode).orElseThrow().positions();
+            var together = new CyclicBarrier(3);
+
+            List<Object> results = new ArrayList<>();
+            try (var executor = Executors.newFixedThreadPool(3)) {
+                List<Callable<Object>> actions = List.of(
+                        () -> {
+                            together.await();
+                            return crewJoining.take(joinCode, positions.get(0).id());
+                        },
+                        () -> {
+                            together.await();
+                            return crewJoining.takeOver(joinCode, positions.get(1).id());
+                        },
+                        () -> {
+                            together.await();
+                            return exercises.delete(exercise.id());
+                        });
+                for (var acting : executor.invokeAll(actions)) {
+                    results.add(acting.get());
+                }
+            }
+
+            assertThat(results.get(2)).isEqualTo(new LifecycleResult.Done());
+            assertThat(results.subList(0, 2)).allMatch(result -> result instanceof TakeResult.Taken
+                    || result instanceof TakeResult.NotJoinable);
+        }
     }
 
     @Test
@@ -203,11 +240,12 @@ class CrewJoiningTest {
 
     @Test
     void onceTheExerciseHasEndedNoPositionChangesHandsButHoldersKeepTheirs() {
-        var joinCode = joinCodeOf(exercises.createFrom(twoPositions(), ANNA));
+        var exercise = created(exercises.createFrom(twoPositions(), ANNA));
+        var joinCode = exercise.joinCode();
         var positions = crewJoining.findExercise(joinCode.toString()).orElseThrow().positions();
         var holder = ((TakeResult.Taken) crewJoining.take(joinCode.toString(), positions.get(0).id())).token();
 
-        exercises.end(joinCode);
+        startAndEnd(exercises, exercise);
 
         assertThat(crewJoining.take(joinCode.toString(), positions.get(1).id()))
                 .isInstanceOf(TakeResult.NotJoinable.class);
@@ -232,7 +270,8 @@ class CrewJoiningTest {
 
     @Test
     void followersOfAnExerciseHearOfEveryChangeToItAndOnlyToIt() {
-        var joinCode = joinCodeOf(exercises.createFrom(twoPositions(), ANNA));
+        var exercise = created(exercises.createFrom(twoPositions(), ANNA));
+        var joinCode = exercise.joinCode();
         var other = joinCodeOf(exercises.createFrom(aScenario(), ANNA));
         var positions = crewJoining.findExercise(joinCode.toString()).orElseThrow().positions();
         var heard = new AtomicInteger();
@@ -244,9 +283,9 @@ class CrewJoiningTest {
         var holder = ((TakeResult.Taken) crewJoining.takeOver(joinCode.toString(), positions.get(0).id())).token();
         crewJoining.take(joinCode.toString(), positions.get(1).id());
         crewJoining.changePosition(holder);
-        exercises.end(joinCode);
+        startAndEnd(exercises, exercise);
 
-        assertThat(heard).hasValue(5);
+        assertThat(heard).hasValue(6);
         assertThat(heardOfOther).hasValue(0);
     }
 
