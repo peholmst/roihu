@@ -1,5 +1,7 @@
 package net.pkhapps.roihu.exercise;
 
+import org.jspecify.annotations.Nullable;
+
 import java.io.Serial;
 import java.io.Serializable;
 import java.security.MessageDigest;
@@ -51,7 +53,7 @@ public final class HolderToken implements Serializable {
     }
 
     @Override
-    public boolean equals(Object o) {
+    public boolean equals(@Nullable Object o) {
         return o instanceof HolderToken other && MessageDigest.isEqual(value, other.value);
     }
 

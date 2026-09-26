@@ -43,7 +43,7 @@ public class PositionView extends Composite<VerticalLayout>
     private JoinCode joinCodeShown;
     private HolderToken token;
     private @Nullable Holding shown;
-    private Subscription subscription;
+    private @Nullable Subscription subscription;
 
     @Override
     public void beforeEnter(BeforeEnterEvent event) {

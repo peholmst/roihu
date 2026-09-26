@@ -1,5 +1,7 @@
 package net.pkhapps.roihu.exercise;
 
+import org.jspecify.annotations.Nullable;
+
 import java.util.Locale;
 import java.util.Optional;
 import java.util.random.RandomGenerator;
@@ -63,7 +65,7 @@ public final class JoinCode {
     }
 
     @Override
-    public boolean equals(Object o) {
+    public boolean equals(@Nullable Object o) {
         return o instanceof JoinCode other && value.equals(other.value);
     }
 

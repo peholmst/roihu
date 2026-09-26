@@ -4,6 +4,7 @@ import com.vaadin.flow.server.ServiceInitEvent;
 import com.vaadin.flow.server.VaadinRequest;
 import com.vaadin.flow.server.VaadinService;
 import com.vaadin.flow.server.VaadinServiceInitListener;
+import org.jspecify.annotations.Nullable;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
@@ -31,7 +32,7 @@ class InterfaceLanguages implements VaadinServiceInitListener {
                 .setLocale(chooseFor(VaadinService.getCurrentRequest()).locale()));
     }
 
-    private InterfaceLanguage chooseFor(VaadinRequest request) {
+    private InterfaceLanguage chooseFor(@Nullable VaadinRequest request) {
         return Optional.ofNullable(request)
                 .flatMap(from -> LanguageCookie.read(from).or(() -> preferredByBrowser(from)))
                 .orElse(deploymentDefault);

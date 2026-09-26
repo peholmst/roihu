@@ -23,6 +23,7 @@ import net.pkhapps.roihu.exercise.JoinCode;
 import net.pkhapps.roihu.exercise.JoinableExercise;
 import net.pkhapps.roihu.exercise.Subscription;
 import net.pkhapps.roihu.exercise.TakeResult;
+import org.jspecify.annotations.Nullable;
 
 
 /**
@@ -43,7 +44,7 @@ public class PositionPickerView extends Composite<VerticalLayout>
 
     private JoinCode joinCode;
     private boolean takenOver;
-    private Subscription subscription;
+    private @Nullable Subscription subscription;
 
     @Override
     public void beforeEnter(BeforeEnterEvent event) {
