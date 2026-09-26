@@ -55,15 +55,7 @@ public class CrewJoining {
                 .fetchOptional(record -> new JoinableExercise(
                         ExerciseStates.of(record.get(EXERCISE.STATE)),
                         PreparedLanguage.fromCode(record.get(EXERCISE.PREPARED_LANGUAGE).getLiteral()),
-                        db.select(EXERCISE_POSITION.ID, EXERCISE_POSITION.NAME, EXERCISE_POSITION.CALL_SIGN,
-                                        HOLDING.EXERCISE_POSITION_ID.isNotNull())
-                                .from(EXERCISE_POSITION)
-                                .leftJoin(HOLDING).on(HOLDING.EXERCISE_POSITION_ID.eq(EXERCISE_POSITION.ID))
-                                .where(EXERCISE_POSITION.EXERCISE_ID.eq(record.get(EXERCISE.ID)))
-                                .orderBy(EXERCISE_POSITION.ORDINAL)
-                                .fetch(position -> new ExercisePosition(new PositionId(position.value1()),
-                                        position.value2(), Optional.ofNullable(position.value3()),
-                                        position.value4())))));
+                        ExercisePositions.of(db, record.get(EXERCISE.ID)))));
     }
 
     /**

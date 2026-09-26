@@ -14,6 +14,11 @@ final class JoinLinks {
     }
 
     static String of(JoinCode joinCode) {
+        return address() + "/" + joinCode;
+    }
+
+    /** The join screen's own address, where a crew member types the code. */
+    static String address() {
         var request = VaadinServletRequest.getCurrent();
         if (request == null) {
             throw new IllegalStateException("A join link is made while answering a request");
@@ -21,6 +26,6 @@ final class JoinLinks {
         var http = request.getHttpServletRequest();
         var defaultPort = http.getScheme().equals("https") ? 443 : 80;
         var port = http.getServerPort() == defaultPort ? "" : ":" + http.getServerPort();
-        return http.getScheme() + "://" + http.getServerName() + port + http.getContextPath() + "/join/" + joinCode;
+        return http.getScheme() + "://" + http.getServerName() + port + http.getContextPath() + "/join";
     }
 }

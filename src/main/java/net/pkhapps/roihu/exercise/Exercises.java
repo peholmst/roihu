@@ -92,7 +92,8 @@ public class Exercises {
                         JoinCode.parse(exercise.getJoinCode()).orElseThrow(),
                         new Change(new Officer(exercise.getCreatedBy()), exercise.getCreatedAt().toInstant()),
                         Optional.ofNullable(exercise.getStartedAt()).map(OffsetDateTime::toInstant),
-                        Optional.ofNullable(exercise.getEndedAt()).map(OffsetDateTime::toInstant)));
+                        Optional.ofNullable(exercise.getEndedAt()).map(OffsetDateTime::toInstant),
+                        ExercisePositions.of(db, id.value())));
     }
 
     /**

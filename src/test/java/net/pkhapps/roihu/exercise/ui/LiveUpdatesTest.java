@@ -26,6 +26,7 @@ import java.util.Optional;
 import static net.pkhapps.roihu.TestExercises.created;
 import static net.pkhapps.roihu.TestExercises.startAndEnd;
 import static net.pkhapps.roihu.TestOfficers.ANNA;
+import static net.pkhapps.roihu.TestOfficers.signedIn;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /** Crew members' devices following what the others do, without reloading. */
@@ -147,6 +148,23 @@ class LiveUpdatesTest {
 
         receivePush(watching);
         assertThat(watching.getCurrentView().getElement().getTextRecursively())
+                .containsSubsequence("RVS911K · Pump operator", "Taken");
+    }
+
+    @Test
+    void presentationModeShowsAPositionTakenAsSoonAsACrewMemberTakesIt() {
+        var exercise = aCreatedExercise();
+        var room = app.newUser(signedIn(ANNA.email(), "Anna Officer")).newWindow();
+        var taking = app.newUser().newWindow();
+        room.navigate("exercises/" + exercise.id().value() + "/presentation", PresentationView.class);
+        receivePush(room);
+        assertThat(room.getCurrentView().getElement().getTextRecursively())
+                .containsSubsequence("RVS911K · Pump operator", "Free");
+
+        takePumpOperator(taking, exercise.joinCode());
+
+        receivePush(room);
+        assertThat(room.getCurrentView().getElement().getTextRecursively())
                 .containsSubsequence("RVS911K · Pump operator", "Taken");
     }
 

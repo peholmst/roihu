@@ -6,7 +6,10 @@ import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.clipboard.Clipboard;
 import com.vaadin.flow.component.confirmdialog.ConfirmDialog;
+import com.vaadin.flow.component.html.Anchor;
+import com.vaadin.flow.component.html.AnchorTarget;
 import com.vaadin.flow.component.html.Div;
+import com.vaadin.flow.component.html.H2;
 import com.vaadin.flow.component.html.Paragraph;
 import com.vaadin.flow.component.notification.Notification;
 import com.vaadin.flow.component.orderedlayout.FlexComponent;
@@ -19,6 +22,7 @@ import com.vaadin.flow.router.BeforeEnterEvent;
 import com.vaadin.flow.router.BeforeEnterObserver;
 import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
+import com.vaadin.flow.router.RouteConfiguration;
 import com.vaadin.flow.router.RouteParameters;
 import jakarta.annotation.security.RolesAllowed;
 import net.pkhapps.roihu.base.security.Roles;
@@ -32,7 +36,6 @@ import org.jspecify.annotations.Nullable;
 
 import java.util.Objects;
 import java.util.Optional;
-import java.util.UUID;
 import java.util.function.Supplier;
 
 /**
@@ -63,7 +66,7 @@ public class ExerciseView extends Composite<VerticalLayout> implements BeforeEnt
 
     @Override
     public void beforeEnter(BeforeEnterEvent event) {
-        var exercise = event.getRouteParameters().get(ID).flatMap(ExerciseView::parse).flatMap(exercises::get);
+        var exercise = event.getRouteParameters().get(ID).flatMap(ExerciseIds::parse).flatMap(exercises::get);
         if (exercise.isEmpty()) {
             event.forwardTo(ExercisesView.class);
             return;
@@ -109,14 +112,6 @@ public class ExerciseView extends Composite<VerticalLayout> implements BeforeEnt
         return Objects.requireNonNull(shown, "The exercise screen shows nothing before it is entered");
     }
 
-    private static Optional<ExerciseId> parse(String id) {
-        try {
-            return Optional.of(new ExerciseId(UUID.fromString(id)));
-        } catch (IllegalArgumentException malformed) {
-            return Optional.empty();
-        }
-    }
-
     private void show(Exercise exercise) {
         shown = exercise;
         var joinCode = new Div(exercise.joinCode().toString());
@@ -135,6 +130,10 @@ public class ExerciseView extends Composite<VerticalLayout> implements BeforeEnt
         var linkRow = new HorizontalLayout(link, copy);
         linkRow.setWidthFull();
         linkRow.setDefaultVerticalComponentAlignment(FlexComponent.Alignment.BASELINE);
+        // In a tab of its own, for the training room's screen, while the officer keeps this one.
+        var presentation = new Anchor(RouteConfiguration.forSessionScope().getUrl(PresentationView.class,
+                PresentationView.parametersFor(exercise.id())), getTranslation("exercise.presentation"));
+        presentation.setTarget(AnchorTarget.BLANK);
         var actions = new HorizontalLayout();
         switch (exercise.state()) {
             case SETUP -> actions.add(
@@ -151,7 +150,8 @@ public class ExerciseView extends Composite<VerticalLayout> implements BeforeEnt
         getContent().removeAll();
         getContent().add(new ViewTitle(exercise.scenarioName()),
                 new Paragraph(getTranslation("exercise.state." + exercise.state())),
-                actions, joinCode, linkRow);
+                actions, presentation, joinCode, linkRow, new QrCode(joinLink, getTranslation("exercise.qr-code")),
+                new H2(getTranslation("exercise.positions")), new PositionList(exercise.positions()));
     }
 
     /** A button that does what it says after the officer confirms it, and then {@code onDone}. */

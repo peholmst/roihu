@@ -140,6 +140,7 @@ class PositionViewTest extends SpringBrowserlessTest {
         navigate("join/" + exercise.joinCode() + "/positions", PositionPickerView.class);
         test(find(Button.class).withText("RVS911K · Pump operator").single()).click();
         var position = (PositionView) getCurrentView();
+        receivePush(position);
 
         exercises.start(exercise.id());
 
@@ -156,6 +157,7 @@ class PositionViewTest extends SpringBrowserlessTest {
         navigate("join/" + exercise.joinCode() + "/positions", PositionPickerView.class);
         test(find(Button.class).withText("RVS911K · Pump operator").single()).click();
         var position = (PositionView) getCurrentView();
+        receivePush(position);
 
         exercises.delete(exercise.id());
 

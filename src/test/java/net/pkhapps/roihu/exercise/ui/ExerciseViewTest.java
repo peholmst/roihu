@@ -4,6 +4,8 @@ import com.vaadin.browserless.SpringBrowserlessTest;
 import com.vaadin.flow.component.Component;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.confirmdialog.ConfirmDialog;
+import com.vaadin.flow.component.html.Anchor;
+import com.vaadin.flow.component.html.AnchorTarget;
 import com.vaadin.flow.component.notification.Notification;
 import com.vaadin.flow.component.textfield.TextField;
 import com.vaadin.flow.internal.CurrentInstance;
@@ -12,6 +14,7 @@ import com.vaadin.flow.server.VaadinResponse;
 import net.pkhapps.roihu.IntegrationTest;
 import net.pkhapps.roihu.WithOfficer;
 import net.pkhapps.roihu.exercise.CreateResult;
+import net.pkhapps.roihu.exercise.CrewJoining;
 import net.pkhapps.roihu.exercise.ExerciseState;
 import net.pkhapps.roihu.exercise.Exercises;
 import net.pkhapps.roihu.scenario.PreparedLanguage;
@@ -54,6 +57,42 @@ class ExerciseViewTest extends SpringBrowserlessTest {
         assertThat(link.getValue()).isEqualTo("http://127.0.0.1:8080/join/" + created.joinCode());
         assertThat(link.isReadOnly()).isTrue();
         assertThat(find(Button.class).withText("Copy link").all()).hasSize(1);
+    }
+
+    @Test
+    void theQrCodeOnTheExerciseScreenIsTheJoinLink() throws Exception {
+        var created = anExercise();
+        navigate("exercises/" + created.id().value(), ExerciseView.class);
+
+        assertThat(QrCodes.decode(find(QrCode.class).single().png()))
+                .isEqualTo("http://127.0.0.1:8080/join/" + created.joinCode());
+    }
+
+    @Test
+    void theExerciseScreenShowsPositionsBeingTakenAsSoonAsTheyAre(@Autowired CrewJoining crewJoining) {
+        var created = anExercise();
+        var view = navigate("exercises/" + created.id().value(), ExerciseView.class);
+        receivePush(view);
+        assertThat(view.getElement().getTextRecursively()).containsSubsequence("RVSP911 · Officer", "Free");
+
+        var officer = crewJoining.findExercise(created.joinCode().toString()).orElseThrow().positions().getFirst();
+        crewJoining.take(created.joinCode().toString(), officer.id());
+
+        receivePush(view);
+        assertThat(view.getElement().getTextRecursively())
+                .containsSubsequence("RVSP911 · Officer", "Taken")
+                .doesNotContain("Free");
+    }
+
+    @Test
+    void presentationModeOpensInANewTabForTheTrainingRoomsScreen() {
+        var created = anExercise();
+        navigate("exercises/" + created.id().value(), ExerciseView.class);
+
+        var presentation = find(Anchor.class).withText("Presentation mode").single();
+
+        assertThat(presentation.getHref()).isEqualTo("exercises/" + created.id().value() + "/presentation");
+        assertThat(presentation.getTarget()).contains(AnchorTarget.BLANK.getValue());
     }
 
     @Test
@@ -163,6 +202,7 @@ class ExerciseViewTest extends SpringBrowserlessTest {
     void theExerciseScreenShowsAnotherOfficerStartingAndEndingItAsSoonAsTheyDo() {
         var created = anExercise();
         var view = navigate("exercises/" + created.id().value(), ExerciseView.class);
+        receivePush(view);
 
         exercises.start(created.id());
 
@@ -181,6 +221,7 @@ class ExerciseViewTest extends SpringBrowserlessTest {
     void theExerciseScreenLeadsBackToTheStartScreenAsSoonAsAnotherOfficerDeletesIt() {
         var created = anExercise();
         var view = navigate("exercises/" + created.id().value(), ExerciseView.class);
+        receivePush(view);
 
         exercises.delete(created.id());
 

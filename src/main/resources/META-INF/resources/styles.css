@@ -36,3 +36,42 @@ vaadin-side-nav:has(vaadin-side-nav-item:only-child)::after {
     line-height: 1.2;
     margin-block: 0.25em;
 }
+
+/* Drawn one pixel per module step, so kept sharp when scaled rather than smoothed into grey. */
+.qr-code {
+    image-rendering: pixelated;
+    width: 12rem;
+    height: auto;
+}
+
+.position-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: grid;
+    grid-template-columns: max-content max-content;
+    gap: 0.25em 1.5em;
+    line-height: 1.4;
+}
+
+.position-list li {
+    display: contents;
+}
+
+.position-list .free {
+    color: var(--vaadin-text-color-secondary);
+}
+
+.position-list .taken {
+    font-weight: var(--aura-font-weight-semibold);
+}
+
+/* The training room's screen, read from across the room. */
+.presentation {
+    font-size: clamp(1rem, 2.5vw, 2rem);
+    justify-content: center;
+}
+
+.presentation .qr-code {
+    width: min(45vh, 60vw);
+}
