@@ -6,6 +6,9 @@ import net.pkhapps.roihu.exercise.ExercisePosition;
 import net.pkhapps.roihu.exercise.Exercises;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.transaction.IllegalTransactionStateException;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.time.Instant;
 import java.util.ArrayList;
@@ -18,6 +21,7 @@ import java.util.concurrent.Future;
 import static net.pkhapps.roihu.TestOfficers.ANNA;
 import static net.pkhapps.roihu.TestOfficers.BERTIL;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
 import static org.assertj.core.api.Assertions.tuple;
 
@@ -120,6 +124,80 @@ class ScenariosTest {
         var saved = scenarios.get(id).orElseThrow().content();
         assertThat(saved.positions()).extracting(ScenarioPosition::name)
                 .containsExactly(saved.name().replace("Warehouse fire", "Officer"));
+    }
+
+    @Test
+    void aDuplicateIsANewScenarioWithTheSameContentCreatedByTheDuplicatingOfficer() {
+        var content = new ScenarioContent("Warehouse fire", PreparedLanguage.SWEDISH, Optional.of("Night shift"), List.of(
+                new ScenarioPosition("Officer", Optional.of("RVSP911")),
+                new ScenarioPosition("Pump operator", Optional.empty())));
+        var original = scenarios.create(content, ANNA);
+
+        var duplicate = scenarios.duplicate(original, BERTIL).orElseThrow();
+
+        assertThat(duplicate).isNotEqualTo(original);
+        var copy = scenarios.get(duplicate).orElseThrow();
+        assertThat(copy.content()).isEqualTo(content);
+        assertThat(copy.created().by()).isEqualTo(BERTIL);
+        assertThat(copy.lastChanged().by()).isEqualTo(BERTIL);
+    }
+
+    @Test
+    void changingADuplicateOrItsOriginalLeavesTheOtherAsItWas() {
+        var content = warehouseFire();
+        var original = scenarios.create(content, ANNA);
+        var duplicate = scenarios.duplicate(original, BERTIL).orElseThrow();
+
+        scenarios.save(original, versionOf(original), new ScenarioContent("Original", PreparedLanguage.FINNISH,
+                Optional.empty(), List.of()), ANNA);
+        scenarios.save(duplicate, versionOf(duplicate), new ScenarioContent("Duplicate", PreparedLanguage.ENGLISH,
+                Optional.empty(), List.of(new ScenarioPosition("Observer", Optional.empty()))), BERTIL);
+
+        assertThat(scenarios.get(original).orElseThrow().content()).isEqualTo(new ScenarioContent("Original",
+                PreparedLanguage.FINNISH, Optional.empty(), List.of()));
+        assertThat(scenarios.get(duplicate).orElseThrow().content()).isEqualTo(new ScenarioContent("Duplicate",
+                PreparedLanguage.ENGLISH, Optional.empty(), List.of(new ScenarioPosition("Observer", Optional.empty()))));
+    }
+
+    @Test
+    void aScenarioThatWasNeverRunIsDeletedFromTheLibrary() {
+        var id = scenarios.create(warehouseFire(), ANNA);
+
+        assertThat(scenarios.delete(id)).isInstanceOf(DeleteResult.Deleted.class);
+
+        assertThat(scenarios.get(id)).isEmpty();
+        assertThat(scenarios.list()).noneMatch(summary -> summary.id().equals(id));
+    }
+
+    @Test
+    void aScenarioThatHasAnExerciseIsNotDeleted(@Autowired Exercises exercises) {
+        var id = scenarios.create(warehouseFire(), ANNA);
+        exercises.createFrom(id);
+
+        assertThat(scenarios.delete(id)).isInstanceOf(DeleteResult.HasExercises.class);
+
+        assertThat(scenarios.get(id)).get().extracting(Scenario::content).isEqualTo(warehouseFire());
+    }
+
+    @Test
+    void aDeleteIsItsOwnTransactionSinceARefusalWouldLeaveAnEnclosingOneUnusable(
+            @Autowired PlatformTransactionManager transactions) {
+        var id = scenarios.create(warehouseFire(), ANNA);
+
+        assertThatExceptionOfType(IllegalTransactionStateException.class).isThrownBy(() ->
+                new TransactionTemplate(transactions).executeWithoutResult(status -> scenarios.delete(id)));
+        assertThat(scenarios.get(id)).isPresent();
+    }
+
+    @Test
+    void aScenarioAlreadyDeletedIsReportedGoneToWhoeverDeletesSavesOrDuplicatesItNext() {
+        var id = scenarios.create(warehouseFire(), ANNA);
+        var version = versionOf(id);
+        scenarios.delete(id);
+
+        assertThat(scenarios.delete(id)).isInstanceOf(DeleteResult.Gone.class);
+        assertThat(scenarios.save(id, version, warehouseFire(), BERTIL)).isInstanceOf(SaveResult.Gone.class);
+        assertThat(scenarios.duplicate(id, BERTIL)).isEmpty();
     }
 
     @Test

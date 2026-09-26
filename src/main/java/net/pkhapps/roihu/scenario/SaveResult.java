@@ -13,4 +13,8 @@ public sealed interface SaveResult {
      */
     record Conflict(Change lastChanged) implements SaveResult {
     }
+
+    /** Someone deleted the scenario, so there is nothing left to save into. */
+    record Gone() implements SaveResult {
+    }
 }

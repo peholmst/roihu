@@ -10,6 +10,8 @@ import com.vaadin.flow.component.grid.dnd.GridDropLocation;
 import com.vaadin.flow.component.grid.dnd.GridDropMode;
 import com.vaadin.flow.component.html.H2;
 import com.vaadin.flow.component.html.Paragraph;
+import com.vaadin.flow.component.notification.Notification;
+import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.component.select.Select;
 import com.vaadin.flow.component.textfield.TextArea;
@@ -25,6 +27,7 @@ import net.pkhapps.roihu.base.security.Roles;
 import net.pkhapps.roihu.base.security.SignedInOfficer;
 import net.pkhapps.roihu.base.ui.ViewTitle;
 import net.pkhapps.roihu.scenario.Change;
+import net.pkhapps.roihu.scenario.DeleteResult;
 import net.pkhapps.roihu.scenario.PreparedLanguage;
 import net.pkhapps.roihu.scenario.SaveResult;
 import net.pkhapps.roihu.scenario.Scenario;
@@ -56,12 +59,16 @@ public class ScenarioEditorView extends Composite<VerticalLayout> implements Bef
     private final Grid<PositionRow> positions = new Grid<>();
     private final GridListDataView<PositionRow> positionRows = positions.setItems(new ArrayList<>());
     private final Paragraph provenance = new Paragraph();
+    private final Button duplicate = new Button();
+    private final Button delete = new Button();
     /** The position being dragged into a new place, while one is. */
     private @Nullable PositionRow dragged;
     /** The scenario being edited, or nothing while a new one is being written. */
     private @Nullable ScenarioId editing;
     /** The version of the scenario being edited that the form was filled from. */
     private int editingVersion;
+    /** What the form was filled with, to tell whether the officer has changed it since. */
+    private ScenarioContent filledWith = new ScenarioContent("", PreparedLanguage.FINNISH, Optional.empty(), List.of());
 
     ScenarioEditorView(Scenarios scenarios, SignedInOfficer officer) {
         this.scenarios = scenarios;
@@ -81,7 +88,13 @@ public class ScenarioEditorView extends Composite<VerticalLayout> implements Bef
                 event -> positionRows.addItem(new PositionRow()));
         var save = new Button(getTranslation("editor.save"), event -> save());
         save.addThemeVariants(ButtonVariant.PRIMARY);
-        getContent().add(new ViewTitle(getTranslation("editor.title")), provenance, name, preparedLanguage, description,
+        duplicate.setText(getTranslation("editor.duplicate"));
+        duplicate.addClickListener(event -> duplicate());
+        delete.setText(getTranslation("editor.delete"));
+        delete.addThemeVariants(ButtonVariant.ERROR);
+        delete.addClickListener(event -> confirmDelete());
+        var actions = new HorizontalLayout(duplicate, delete);
+        getContent().add(new ViewTitle(getTranslation("editor.title")), actions, provenance, name, preparedLanguage, description,
                 new H2(getTranslation("editor.positions")), createPositions(), addPosition, save);
     }
 
@@ -121,6 +134,8 @@ public class ScenarioEditorView extends Composite<VerticalLayout> implements Bef
         fill(new ScenarioContent("", defaultPreparedLanguage(), Optional.empty(), List.of()));
         provenance.setText("");
         provenance.setVisible(false);
+        duplicate.setVisible(false);
+        delete.setVisible(false);
     }
 
     private void show(Scenario scenario) {
@@ -131,9 +146,12 @@ public class ScenarioEditorView extends Composite<VerticalLayout> implements Bef
                 Changes.describe(scenario.created(), getLocale()),
                 Changes.describe(scenario.lastChanged(), getLocale())));
         provenance.setVisible(true);
+        duplicate.setVisible(true);
+        delete.setVisible(true);
     }
 
     private void fill(ScenarioContent content) {
+        filledWith = content;
         name.setValue(content.name());
         name.setInvalid(false);
         preparedLanguage.setValue(content.preparedLanguage());
@@ -207,7 +225,7 @@ public class ScenarioEditorView extends Composite<VerticalLayout> implements Bef
             return;
         }
         var content = new ScenarioContent(name.getValue().strip(), preparedLanguage.getValue(),
-                Optional.of(description.getValue()).filter(text -> !text.isBlank()),
+                description(),
                 rows.stream().map(PositionRow::toPosition).toList());
         if (editing == null) {
             scenarios.create(content, officer.get());
@@ -217,6 +235,7 @@ public class ScenarioEditorView extends Composite<VerticalLayout> implements Bef
         switch (scenarios.save(editing, editingVersion, content, officer.get())) {
             case SaveResult.Saved saved -> showLibrary();
             case SaveResult.Conflict conflict -> offerReload(conflict.lastChanged());
+            case SaveResult.Gone gone -> Notification.show(getTranslation("editor.gone.not-saved"));
         }
     }
 
@@ -238,7 +257,75 @@ public class ScenarioEditorView extends Composite<VerticalLayout> implements Bef
 
     private void reload() {
         Optional.ofNullable(editing).flatMap(scenarios::get)
-                .ifPresentOrElse(this::show, this::showLibrary);
+                .ifPresentOrElse(this::show, this::showGone);
+    }
+
+    /**
+     * Copies the saved version of the scenario and opens the copy, which the officer may then make
+     * into a variant. Asks first when that would leave unsaved changes behind.
+     */
+    private void duplicate() {
+        if (!hasUnsavedChanges()) {
+            duplicateSaved();
+            return;
+        }
+        var dialog = new ConfirmDialog();
+        dialog.setHeader(getTranslation("editor.duplicate.title"));
+        dialog.setText(getTranslation("editor.duplicate.text"));
+        dialog.setConfirmText(getTranslation("editor.duplicate.confirm"));
+        dialog.setCancelable(true);
+        dialog.setCancelText(getTranslation("editor.duplicate.cancel"));
+        dialog.addConfirmListener(event -> duplicateSaved());
+        dialog.open();
+    }
+
+    /** A copy of a deleted scenario cannot be made, so the officer's draft stays on screen. */
+    private void duplicateSaved() {
+        Optional.ofNullable(editing).flatMap(original -> scenarios.duplicate(original, officer.get()))
+                .ifPresentOrElse(copy -> getUI().ifPresent(ui -> ui.navigate(ScenarioEditorView.class,
+                        parametersFor(copy))), () -> Notification.show(getTranslation("editor.gone")));
+    }
+
+    private boolean hasUnsavedChanges() {
+        return !name.getValue().strip().equals(filledWith.name())
+                || preparedLanguage.getValue() != filledWith.preparedLanguage()
+                || !description().equals(filledWith.description())
+                || !positionRows.getItems().map(PositionRow::written).toList()
+                .equals(filledWith.positions().stream().map(PositionRow::new).map(PositionRow::written).toList());
+    }
+
+    private Optional<String> description() {
+        return Optional.of(description.getValue()).filter(text -> !text.isBlank());
+    }
+
+    private void confirmDelete() {
+        var dialog = new ConfirmDialog();
+        dialog.setHeader(getTranslation("editor.delete.title"));
+        dialog.setText(getTranslation("editor.delete.text", name.getValue()));
+        dialog.setConfirmText(getTranslation("editor.delete.confirm"));
+        dialog.setConfirmButtonTheme("error primary");
+        dialog.setCancelable(true);
+        dialog.setCancelText(getTranslation("editor.delete.cancel"));
+        dialog.addConfirmListener(event -> delete());
+        dialog.open();
+    }
+
+    private void delete() {
+        var scenario = editing;
+        if (scenario == null) {
+            return;
+        }
+        switch (scenarios.delete(scenario)) {
+            case DeleteResult.Deleted deleted -> showLibrary();
+            case DeleteResult.HasExercises hasExercises ->
+                    Notification.show(getTranslation("editor.delete.has-exercises"));
+            case DeleteResult.Gone gone -> showGone();
+        }
+    }
+
+    private void showGone() {
+        Notification.show(getTranslation("editor.gone"));
+        showLibrary();
     }
 
     private void showLibrary() {
@@ -260,6 +347,11 @@ public class ScenarioEditorView extends Composite<VerticalLayout> implements Bef
         PositionRow(ScenarioPosition position) {
             name = position.name();
             callSign = position.callSign().orElse("");
+        }
+
+        /** The position as written, whether or not it could be saved yet. */
+        List<String> written() {
+            return List.of(name.strip(), callSign.strip());
         }
 
         ScenarioPosition toPosition() {

@@ -3,10 +3,13 @@ package net.pkhapps.roihu.scenario;
 import net.pkhapps.roihu.base.security.Officer;
 import org.jooq.DSLContext;
 import org.jooq.impl.DSL;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Isolation;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.sql.SQLException;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -21,6 +24,9 @@ import static net.pkhapps.roihu.db.generated.Tables.SCENARIO_POSITION;
  */
 @Service
 public class Scenarios {
+
+    /** PostgreSQL's SQLSTATE for a row that is still referenced; only exercises refer to a scenario. */
+    private static final String FOREIGN_KEY_VIOLATION = "23503";
 
     private final DSLContext db;
 
@@ -80,6 +86,15 @@ public class Scenarios {
     }
 
     /**
+     * Creates a new scenario with a copy of everything {@code original} holds, created by
+     * {@code officer}. The copy keeps no link to the original, so either may change alone.
+     */
+    @Transactional(isolation = Isolation.REPEATABLE_READ)
+    public Optional<ScenarioId> duplicate(ScenarioId original, Officer officer) {
+        return get(original).map(scenario -> create(scenario.content(), officer));
+    }
+
+    /**
      * Replaces everything the scenario holds with {@code content}, unless someone has changed it
      * since {@code version}. Exercises hold their own copy of the positions (ADR-0002), so nothing
      * depends on the positions being replaced.
@@ -97,19 +112,37 @@ public class Scenarios {
                 .and(SCENARIO.VERSION.eq(version))
                 .execute();
         if (saved == 0) {
-            return new SaveResult.Conflict(lastChanged(id));
+            return lastChanged(id).<SaveResult>map(SaveResult.Conflict::new).orElseGet(SaveResult.Gone::new);
         }
         db.deleteFrom(SCENARIO_POSITION).where(SCENARIO_POSITION.SCENARIO_ID.eq(id.value())).execute();
         insertPositions(id.value(), content);
         return new SaveResult.Saved();
     }
 
-    private Change lastChanged(ScenarioId id) {
+    private Optional<Change> lastChanged(ScenarioId id) {
         return db.select(SCENARIO.LAST_CHANGED_BY, SCENARIO.LAST_CHANGED_AT)
                 .from(SCENARIO)
                 .where(SCENARIO.ID.eq(id.value()))
-                .fetchOptional(scenario -> new Change(new Officer(scenario.value1()), scenario.value2().toInstant()))
-                .orElseThrow(() -> new IllegalArgumentException("No scenario " + id.value()));
+                .fetchOptional(scenario -> new Change(new Officer(scenario.value1()), scenario.value2().toInstant()));
+    }
+
+    /**
+     * Deletes a scenario that has no exercises. The database refuses to delete one that has, since
+     * each exercise must keep its scenario; its refusal is reported, not thrown. Never part of an
+     * enclosing transaction, which the refusal would leave unable to go on.
+     */
+    @Transactional(propagation = Propagation.NEVER)
+    public DeleteResult delete(ScenarioId id) {
+        try {
+            var deleted = db.deleteFrom(SCENARIO).where(SCENARIO.ID.eq(id.value())).execute();
+            return deleted == 0 ? new DeleteResult.Gone() : new DeleteResult.Deleted();
+        } catch (DataIntegrityViolationException refused) {
+            if (refused.getMostSpecificCause() instanceof SQLException cause
+                    && FOREIGN_KEY_VIOLATION.equals(cause.getSQLState())) {
+                return new DeleteResult.HasExercises();
+            }
+            throw refused;
+        }
     }
 
     private void insertPositions(UUID scenario, ScenarioContent content) {

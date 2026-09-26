@@ -5,12 +5,14 @@ import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.confirmdialog.ConfirmDialog;
 import com.vaadin.flow.component.grid.Grid;
+import com.vaadin.flow.component.notification.Notification;
 import com.vaadin.flow.component.grid.GridTester;
 import com.vaadin.flow.component.select.Select;
 import com.vaadin.flow.component.textfield.TextArea;
 import com.vaadin.flow.component.textfield.TextField;
 import net.pkhapps.roihu.IntegrationTest;
 import net.pkhapps.roihu.WithOfficer;
+import net.pkhapps.roihu.exercise.Exercises;
 import net.pkhapps.roihu.scenario.PreparedLanguage;
 import net.pkhapps.roihu.scenario.ScenarioContent;
 import net.pkhapps.roihu.scenario.ScenarioId;
@@ -194,6 +196,148 @@ class ScenarioEditorViewTest extends SpringBrowserlessTest {
         test(find(Button.class).withText("Save").single()).click();
         assertThat(find(ConfirmDialog.class).all()).isNotEmpty();
         assertThat(scenarios.get(id).orElseThrow().content().name()).isEqualTo("Mill fire, revised");
+    }
+
+    @Test
+    void duplicatingOpensACopyCreatedByTheOfficerAndLeavesTheOriginal() {
+        var original = scenarios.create(new ScenarioContent("Farm fire", PreparedLanguage.SWEDISH, Optional.of("Hay"),
+                List.of(new ScenarioPosition("Officer", Optional.of("RVSP911")))), BERTIL);
+        navigate("scenarios/edit/" + original.value(), ScenarioEditorView.class);
+
+        test(find(Button.class).withText("Duplicate").single()).click();
+
+        assertThat(field("Name").getValue()).isEqualTo("Farm fire");
+        assertThat(positionCell(0, "name")).isEqualTo("Officer");
+        assertThat(getCurrentView().getElement().getTextRecursively()).contains(ANNA.email())
+                .doesNotContain(BERTIL.email());
+        var farmFires = scenarios.list().stream().filter(summary -> summary.name().equals("Farm fire")).toList();
+        assertThat(farmFires).extracting(summary -> summary.lastChanged().by()).containsExactlyInAnyOrder(ANNA, BERTIL);
+        test(field("Name")).setValue("Farm fire, variant");
+        test(find(Button.class).withText("Save").single()).click();
+        assertThat(scenarios.get(original).orElseThrow().content().name()).isEqualTo("Farm fire");
+        assertThat(savedNamed("Farm fire, variant").positions()).extracting(ScenarioPosition::name)
+                .containsExactly("Officer");
+    }
+
+    @Test
+    void duplicatingWithUnsavedChangesAsksFirstAndCancellingKeepsThem() {
+        var original = scenarios.create(new ScenarioContent("Stable fire", PreparedLanguage.SWEDISH, Optional.empty(),
+                List.of(new ScenarioPosition("Officer", Optional.of("RVSP911")))), BERTIL);
+        navigate("scenarios/edit/" + original.value(), ScenarioEditorView.class);
+        test(find(TextArea.class).single()).setValue("Hay");
+
+        test(find(Button.class).withText("Duplicate").single()).click();
+        var confirmation = test(find(ConfirmDialog.class).single());
+        assertThat(confirmation.getHeader()).isEqualTo("Duplicate the saved version?");
+        confirmation.cancel();
+
+        assertThat(find(TextArea.class).single().getValue()).isEqualTo("Hay");
+        assertThat(scenarios.list()).filteredOn(summary -> summary.name().equals("Stable fire")).hasSize(1);
+    }
+
+    @Test
+    void duplicatingWithUnsavedChangesCopiesTheSavedVersionOnceTheOfficerConfirms() {
+        var original = scenarios.create(new ScenarioContent("Garage fire", PreparedLanguage.SWEDISH, Optional.empty(),
+                List.of(new ScenarioPosition("Officer", Optional.of("RVSP911")))), BERTIL);
+        navigate("scenarios/edit/" + original.value(), ScenarioEditorView.class);
+        test(find(TextArea.class).single()).setValue("Hay");
+
+        test(find(Button.class).withText("Duplicate").single()).click();
+        test(find(ConfirmDialog.class).single()).confirm();
+
+        assertThat(find(TextArea.class).single().getValue()).isEmpty();
+        assertThat(scenarios.list()).filteredOn(summary -> summary.name().equals("Garage fire")).hasSize(2);
+    }
+
+    @Test
+    void duplicatingAScenarioAnotherOfficerHasDeletedSaysSoAndKeepsTheDraft() {
+        var id = scenarios.create(new ScenarioContent("Shed fire", PreparedLanguage.FINNISH, Optional.empty(),
+                List.of()), BERTIL);
+        navigate("scenarios/edit/" + id.value(), ScenarioEditorView.class);
+        scenarios.delete(id);
+        test(field("Name")).setValue("Shed fire at night");
+        test(find(Button.class).withText("Save").single()).click();
+        find(Notification.class).all().forEach(Notification::close);
+
+        test(find(Button.class).withText("Duplicate").single()).click();
+        find(ConfirmDialog.class).all().forEach(dialog -> test(dialog).confirm());
+
+        assertThat(getCurrentView()).isInstanceOf(ScenarioEditorView.class);
+        assertThat(field("Name").getValue()).isEqualTo("Shed fire at night");
+        assertThat(find(Notification.class).all()).extracting(notification -> test(notification).getText())
+                .contains("Another officer has deleted this scenario");
+    }
+
+    @Test
+    void aScenarioIsDeletedOnceTheOfficerConfirms() {
+        var id = scenarios.create(new ScenarioContent("Shed fire", PreparedLanguage.FINNISH, Optional.empty(),
+                List.of()), BERTIL);
+        navigate("scenarios/edit/" + id.value(), ScenarioEditorView.class);
+
+        test(find(Button.class).withText("Delete").single()).click();
+        var confirmation = test(find(ConfirmDialog.class).single());
+        assertThat(confirmation.getHeader()).isEqualTo("Delete this scenario?");
+        assertThat(scenarios.get(id)).isPresent();
+        confirmation.confirm();
+
+        assertThat(getCurrentView()).isInstanceOf(ScenarioLibraryView.class);
+        assertThat(scenarios.get(id)).isEmpty();
+    }
+
+    @Test
+    void aScenarioWithAnExerciseIsNotDeletedAndTheOfficerIsToldWhy(@Autowired Exercises exercises) {
+        var id = scenarios.create(new ScenarioContent("Shed fire", PreparedLanguage.FINNISH, Optional.empty(),
+                List.of(new ScenarioPosition("Officer", Optional.of("RVSP911")))), BERTIL);
+        exercises.createFrom(id);
+        navigate("scenarios/edit/" + id.value(), ScenarioEditorView.class);
+
+        test(find(Button.class).withText("Delete").single()).click();
+        test(find(ConfirmDialog.class).single()).confirm();
+
+        assertThat(getCurrentView()).isInstanceOf(ScenarioEditorView.class);
+        assertThat(test(find(Notification.class).single()).getText())
+                .isEqualTo("This scenario has exercises, so it is kept for them and cannot be deleted");
+        assertThat(scenarios.get(id)).isPresent();
+    }
+
+    @Test
+    void aSaveAfterAnotherOfficerDeletedTheScenarioSaysSoAndKeepsTheDraft() {
+        var id = scenarios.create(new ScenarioContent("Shed fire", PreparedLanguage.FINNISH, Optional.empty(),
+                List.of()), BERTIL);
+        navigate("scenarios/edit/" + id.value(), ScenarioEditorView.class);
+        scenarios.delete(id);
+
+        test(field("Name")).setValue("Shed fire at night");
+        test(find(Button.class).withText("Save").single()).click();
+
+        assertThat(getCurrentView()).isInstanceOf(ScenarioEditorView.class);
+        assertThat(test(find(Notification.class).single()).getText())
+                .isEqualTo("Another officer has deleted this scenario, so your changes were not saved");
+        assertThat(field("Name").getValue()).isEqualTo("Shed fire at night");
+    }
+
+    @Test
+    void reloadingAScenarioAnotherOfficerHasDeletedSaysSo() {
+        var id = scenarios.create(new ScenarioContent("Shed fire", PreparedLanguage.FINNISH, Optional.empty(),
+                List.of()), ANNA);
+        navigate("scenarios/edit/" + id.value(), ScenarioEditorView.class);
+        bertilRenames(id, "Shed fire, revised");
+        test(find(Button.class).withText("Save").single()).click();
+        scenarios.delete(id);
+
+        test(find(ConfirmDialog.class).single()).confirm();
+
+        assertThat(getCurrentView()).isInstanceOf(ScenarioLibraryView.class);
+        assertThat(test(find(Notification.class).single()).getText())
+                .isEqualTo("Another officer has deleted this scenario");
+    }
+
+    @Test
+    void aNewScenarioCannotYetBeDuplicatedOrDeleted() {
+        navigate(ScenarioEditorView.class);
+
+        assertThat(find(Button.class).withText("Duplicate").all()).isEmpty();
+        assertThat(find(Button.class).withText("Delete").all()).isEmpty();
     }
 
     private void bertilRenames(ScenarioId id, String name) {
