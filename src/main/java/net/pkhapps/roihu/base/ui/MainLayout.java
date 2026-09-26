@@ -5,6 +5,8 @@ import com.vaadin.flow.component.Unit;
 import com.vaadin.flow.component.applayout.AppLayout;
 import com.vaadin.flow.component.avatar.Avatar;
 import com.vaadin.flow.component.avatar.AvatarVariant;
+import com.vaadin.flow.component.button.Button;
+import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.html.Span;
 import com.vaadin.flow.component.icon.Icon;
 import com.vaadin.flow.component.icon.SvgIcon;
@@ -14,7 +16,9 @@ import com.vaadin.flow.component.sidenav.SideNavItem;
 import com.vaadin.flow.router.Layout;
 import com.vaadin.flow.server.menu.MenuConfiguration;
 import com.vaadin.flow.server.menu.MenuEntry;
+import com.vaadin.flow.spring.security.AuthenticationContext;
 import jakarta.annotation.security.PermitAll;
+import org.springframework.security.oauth2.core.oidc.user.OidcUser;
 
 /**
  * The training officer's shell. A layout has to permit at least as much as the views inside it,
@@ -25,7 +29,10 @@ import jakarta.annotation.security.PermitAll;
 @Layout
 public final class MainLayout extends AppLayout {
 
-    MainLayout() {
+    private final AuthenticationContext authenticationContext;
+
+    MainLayout(AuthenticationContext authenticationContext) {
+        this.authenticationContext = authenticationContext;
         setPrimarySection(Section.DRAWER);
         addToDrawer(createApplicationHeader(), createApplicationDrawer(), createApplicationFooter());
     }
@@ -51,7 +58,11 @@ public final class MainLayout extends AppLayout {
     }
 
     private Component createApplicationFooter() {
-        var footer = new VerticalLayout(new Span("Made with ❤️ with Vaadin"));
+        var signedIn = new Span(authenticationContext.getAuthenticatedUser(OidcUser.class)
+                .map(OidcUser::getEmail).orElse(""));
+        var signOut = new Button(getTranslation("shell.sign-out"), event -> authenticationContext.logout());
+        signOut.addThemeVariants(ButtonVariant.SMALL);
+        var footer = new VerticalLayout(signedIn, signOut);
         footer.setAlignItems(FlexComponent.Alignment.CENTER);
         footer.addClassName("app-footer");
         return footer;

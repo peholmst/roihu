@@ -25,7 +25,11 @@ import jakarta.annotation.security.RolesAllowed;
 import net.pkhapps.roihu.base.i18n.InterfaceLanguage;
 import net.pkhapps.roihu.base.security.Roles;
 import net.pkhapps.roihu.base.security.SignedInOfficer;
+import net.pkhapps.roihu.base.ui.Changes;
 import net.pkhapps.roihu.base.ui.ViewTitle;
+import net.pkhapps.roihu.exercise.CreateResult;
+import net.pkhapps.roihu.exercise.Exercises;
+import net.pkhapps.roihu.exercise.ui.ExerciseView;
 import net.pkhapps.roihu.scenario.Change;
 import net.pkhapps.roihu.scenario.DeleteResult;
 import net.pkhapps.roihu.scenario.PreparedLanguage;
@@ -52,6 +56,7 @@ public class ScenarioEditorView extends Composite<VerticalLayout> implements Bef
     private static final String ID = "id";
 
     private final Scenarios scenarios;
+    private final Exercises exercises;
     private final SignedInOfficer officer;
     private final TextField name = new TextField();
     private final Select<PreparedLanguage> preparedLanguage = new Select<>();
@@ -59,6 +64,7 @@ public class ScenarioEditorView extends Composite<VerticalLayout> implements Bef
     private final Grid<PositionRow> positions = new Grid<>();
     private final GridListDataView<PositionRow> positionRows = positions.setItems(new ArrayList<>());
     private final Paragraph provenance = new Paragraph();
+    private final Button createExercise = new Button();
     private final Button duplicate = new Button();
     private final Button delete = new Button();
     /** The position being dragged into a new place, while one is. */
@@ -70,8 +76,9 @@ public class ScenarioEditorView extends Composite<VerticalLayout> implements Bef
     /** What the form was filled with, to tell whether the officer has changed it since. */
     private ScenarioContent filledWith = new ScenarioContent("", PreparedLanguage.FINNISH, Optional.empty(), List.of());
 
-    ScenarioEditorView(Scenarios scenarios, SignedInOfficer officer) {
+    ScenarioEditorView(Scenarios scenarios, Exercises exercises, SignedInOfficer officer) {
         this.scenarios = scenarios;
+        this.exercises = exercises;
         this.officer = officer;
         name.setLabel(getTranslation("editor.name"));
         name.setRequiredIndicatorVisible(true);
@@ -88,12 +95,15 @@ public class ScenarioEditorView extends Composite<VerticalLayout> implements Bef
                 event -> positionRows.addItem(new PositionRow()));
         var save = new Button(getTranslation("editor.save"), event -> save());
         save.addThemeVariants(ButtonVariant.PRIMARY);
+        createExercise.setText(getTranslation("editor.create-exercise"));
+        createExercise.addClickListener(event -> whenSavedVersionIsMeant("editor.create-exercise",
+                this::createExerciseFromSaved));
         duplicate.setText(getTranslation("editor.duplicate"));
-        duplicate.addClickListener(event -> duplicate());
+        duplicate.addClickListener(event -> whenSavedVersionIsMeant("editor.duplicate", this::duplicateSaved));
         delete.setText(getTranslation("editor.delete"));
         delete.addThemeVariants(ButtonVariant.ERROR);
         delete.addClickListener(event -> confirmDelete());
-        var actions = new HorizontalLayout(duplicate, delete);
+        var actions = new HorizontalLayout(createExercise, duplicate, delete);
         getContent().add(new ViewTitle(getTranslation("editor.title")), actions, provenance, name, preparedLanguage, description,
                 new H2(getTranslation("editor.positions")), createPositions(), addPosition, save);
     }
@@ -134,6 +144,7 @@ public class ScenarioEditorView extends Composite<VerticalLayout> implements Bef
         fill(new ScenarioContent("", defaultPreparedLanguage(), Optional.empty(), List.of()));
         provenance.setText("");
         provenance.setVisible(false);
+        createExercise.setVisible(false);
         duplicate.setVisible(false);
         delete.setVisible(false);
     }
@@ -146,6 +157,7 @@ public class ScenarioEditorView extends Composite<VerticalLayout> implements Bef
                 Changes.describe(scenario.created(), getLocale()),
                 Changes.describe(scenario.lastChanged(), getLocale())));
         provenance.setVisible(true);
+        createExercise.setVisible(true);
         duplicate.setVisible(true);
         delete.setVisible(true);
     }
@@ -261,25 +273,42 @@ public class ScenarioEditorView extends Composite<VerticalLayout> implements Bef
     }
 
     /**
-     * Copies the saved version of the scenario and opens the copy, which the officer may then make
-     * into a variant. Asks first when that would leave unsaved changes behind.
+     * Duplicating a scenario and creating an exercise from it both use the version last saved.
+     * With unsaved changes on screen, which would be left behind, asks first.
      */
-    private void duplicate() {
+    private void whenSavedVersionIsMeant(String action, Runnable onSavedVersion) {
         if (!hasUnsavedChanges()) {
-            duplicateSaved();
+            onSavedVersion.run();
             return;
         }
         var dialog = new ConfirmDialog();
-        dialog.setHeader(getTranslation("editor.duplicate.title"));
-        dialog.setText(getTranslation("editor.duplicate.text"));
-        dialog.setConfirmText(getTranslation("editor.duplicate.confirm"));
+        dialog.setHeader(getTranslation(action + ".title"));
+        dialog.setText(getTranslation(action + ".text"));
+        dialog.setConfirmText(getTranslation(action + ".confirm"));
         dialog.setCancelable(true);
-        dialog.setCancelText(getTranslation("editor.duplicate.cancel"));
-        dialog.addConfirmListener(event -> duplicateSaved());
+        dialog.setCancelText(getTranslation(action + ".cancel"));
+        dialog.addConfirmListener(event -> onSavedVersion.run());
         dialog.open();
     }
 
-    /** A copy of a deleted scenario cannot be made, so the officer's draft stays on screen. */
+    private void createExerciseFromSaved() {
+        var scenario = editing;
+        if (scenario == null) {
+            return;
+        }
+        switch (exercises.createFrom(scenario, officer.get())) {
+            case CreateResult.Created created -> getUI().ifPresent(ui -> ui.navigate(ExerciseView.class,
+                    ExerciseView.parametersFor(created.id())));
+            case CreateResult.NoPositions noPositions ->
+                    Notification.show(getTranslation("editor.create-exercise.no-positions"));
+            case CreateResult.ScenarioGone gone -> showGone();
+        }
+    }
+
+    /**
+     * Opens the copy, which the officer may then make into a variant. A copy of a deleted
+     * scenario cannot be made, so the officer's draft stays on screen.
+     */
     private void duplicateSaved() {
         Optional.ofNullable(editing).flatMap(original -> scenarios.duplicate(original, officer.get()))
                 .ifPresentOrElse(copy -> getUI().ifPresent(ui -> ui.navigate(ScenarioEditorView.class,

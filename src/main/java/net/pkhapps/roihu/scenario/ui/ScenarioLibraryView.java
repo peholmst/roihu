@@ -10,6 +10,7 @@ import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
 import jakarta.annotation.security.RolesAllowed;
 import net.pkhapps.roihu.base.security.Roles;
+import net.pkhapps.roihu.base.ui.Changes;
 import net.pkhapps.roihu.base.ui.ViewTitle;
 import net.pkhapps.roihu.scenario.ScenarioSummary;
 import net.pkhapps.roihu.scenario.Scenarios;

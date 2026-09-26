@@ -20,7 +20,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class OfficerRoutesTest extends SpringBrowserlessTest {
 
     @ParameterizedTest
-    @ValueSource(strings = {"", "scenarios", "scenarios/edit"})
+    @ValueSource(strings = {"", "scenarios", "scenarios/edit", "exercises/00000000-0000-0000-0000-000000000000"})
     void anAnonymousUserIsSentToSignInInsteadOfSeeingAnOfficerRoute(String route) {
         UI.getCurrent().navigate(route);
 

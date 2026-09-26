@@ -22,6 +22,7 @@ import org.springframework.security.core.Authentication;
 import java.util.List;
 import java.util.Optional;
 
+import static net.pkhapps.roihu.TestExercises.joinCodeOf;
 import static net.pkhapps.roihu.TestOfficers.ANNA;
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -165,9 +166,9 @@ class LiveUpdatesTest {
     }
 
     private JoinCode anExercise() {
-        return exercises.createFrom(scenarios.create(new ScenarioContent("Warehouse fire",
+        return joinCodeOf(exercises.createFrom(scenarios.create(new ScenarioContent("Warehouse fire",
                 PreparedLanguage.FINNISH, Optional.empty(), List.of(
                 new ScenarioPosition("Officer", Optional.of("RVSP911")),
-                new ScenarioPosition("Pump operator", Optional.of("RVS911K")))), ANNA));
+                new ScenarioPosition("Pump operator", Optional.of("RVS911K")))), ANNA), ANNA));
     }
 }

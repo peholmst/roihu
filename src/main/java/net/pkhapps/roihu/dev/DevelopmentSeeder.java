@@ -1,6 +1,7 @@
 package net.pkhapps.roihu.dev;
 
 import net.pkhapps.roihu.base.security.Officer;
+import net.pkhapps.roihu.exercise.CreateResult;
 import net.pkhapps.roihu.exercise.Exercises;
 import net.pkhapps.roihu.exercise.JoinCode;
 import net.pkhapps.roihu.scenario.PreparedLanguage;
@@ -51,15 +52,19 @@ class DevelopmentSeeder implements ApplicationRunner {
 
     @Override
     public void run(ApplicationArguments args) {
-        var joinCode = seededExercise().orElseGet(() -> exercises.createFrom(scenarios.create(new ScenarioContent(
-                SCENARIO_NAME, PreparedLanguage.FINNISH, Optional.empty(), List.of(
+        var joinCode = seededExercise().orElseGet(() -> switch (exercises.createFrom(scenarios.create(
+                new ScenarioContent(SCENARIO_NAME, PreparedLanguage.FINNISH, Optional.empty(), List.of(
                         new ScenarioPosition("Yksikönjohtaja", Optional.of("RVSP911")),
                         new ScenarioPosition("Kuljettaja", Optional.of("RVS911K")),
                         new ScenarioPosition("Savusukeltaja 1", Optional.of("RVS911S1")),
                         new ScenarioPosition("Savusukeltaja 2", Optional.of("RVS911S2")),
                         new ScenarioPosition("Savusukeltaja 3", Optional.of("RVS911S3")),
                         new ScenarioPosition("Savusukeltaja 4", Optional.of("RVS911S4")),
-                        new ScenarioPosition("Säiliöauton kuljettaja", Optional.of("RVS903")))), SEEDER)));
+                        new ScenarioPosition("Säiliöauton kuljettaja", Optional.of("RVS903")))), SEEDER), SEEDER)) {
+            case CreateResult.Created created -> created.joinCode();
+            case CreateResult.NoPositions noPositions -> throw new IllegalStateException("The seeded scenario has positions");
+            case CreateResult.ScenarioGone gone -> throw new IllegalStateException("The seeded scenario was just created");
+        });
         log.info("Seeded exercise: join code {}, join link http://localhost:{}/join/{}", joinCode, port, joinCode);
     }
 

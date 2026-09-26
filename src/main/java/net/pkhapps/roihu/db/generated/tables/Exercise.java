@@ -4,6 +4,7 @@
 package net.pkhapps.roihu.db.generated.tables;
 
 
+import java.time.OffsetDateTime;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
@@ -85,6 +86,31 @@ public class Exercise extends TableImpl<ExerciseRecord> {
      * The column <code>public.exercise.prepared_language</code>.
      */
     public final TableField<ExerciseRecord, PreparedLanguage> PREPARED_LANGUAGE = createField(DSL.name("prepared_language"), SQLDataType.VARCHAR.nullable(false).asEnumDataType(PreparedLanguage.class), this, "");
+
+    /**
+     * The column <code>public.exercise.scenario_name</code>.
+     */
+    public final TableField<ExerciseRecord, String> SCENARIO_NAME = createField(DSL.name("scenario_name"), SQLDataType.CLOB.nullable(false), this, "");
+
+    /**
+     * The column <code>public.exercise.created_by</code>.
+     */
+    public final TableField<ExerciseRecord, String> CREATED_BY = createField(DSL.name("created_by"), SQLDataType.CLOB.nullable(false), this, "");
+
+    /**
+     * The column <code>public.exercise.created_at</code>.
+     */
+    public final TableField<ExerciseRecord, OffsetDateTime> CREATED_AT = createField(DSL.name("created_at"), SQLDataType.TIMESTAMPWITHTIMEZONE(6).nullable(false).defaultValue(DSL.field(DSL.raw("now()"), SQLDataType.TIMESTAMPWITHTIMEZONE)), this, "");
+
+    /**
+     * The column <code>public.exercise.started_at</code>.
+     */
+    public final TableField<ExerciseRecord, OffsetDateTime> STARTED_AT = createField(DSL.name("started_at"), SQLDataType.TIMESTAMPWITHTIMEZONE(6), this, "");
+
+    /**
+     * The column <code>public.exercise.ended_at</code>.
+     */
+    public final TableField<ExerciseRecord, OffsetDateTime> ENDED_AT = createField(DSL.name("ended_at"), SQLDataType.TIMESTAMPWITHTIMEZONE(6), this, "");
 
     private Exercise(Name alias, Table<ExerciseRecord> aliased) {
         this(alias, aliased, (Field<?>[]) null, null);

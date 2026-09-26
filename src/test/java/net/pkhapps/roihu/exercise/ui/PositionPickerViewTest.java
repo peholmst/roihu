@@ -19,6 +19,7 @@ import org.springframework.security.test.context.support.WithAnonymousUser;
 import java.util.List;
 import java.util.Optional;
 
+import static net.pkhapps.roihu.TestExercises.joinCodeOf;
 import static net.pkhapps.roihu.TestOfficers.ANNA;
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -57,9 +58,9 @@ class PositionPickerViewTest extends SpringBrowserlessTest {
 
     @Test
     void neitherThePickerNorThePositionScreenShowsTheScenariosDescription() {
-        var joinCode = exercises.createFrom(scenarios.create(new ScenarioContent("Warehouse fire",
+        var joinCode = joinCodeOf(exercises.createFrom(scenarios.create(new ScenarioContent("Warehouse fire",
                 PreparedLanguage.SWEDISH, Optional.of("The fire starts in the paint store"),
-                List.of(new ScenarioPosition("Officer", Optional.of("RVSP911")))), ANNA));
+                List.of(new ScenarioPosition("Officer", Optional.of("RVSP911")))), ANNA), ANNA));
 
         var picker = navigate("join/" + joinCode + "/positions", PositionPickerView.class);
         assertThat(picker.getElement().getTextRecursively()).doesNotContain("paint store");
@@ -142,10 +143,10 @@ class PositionPickerViewTest extends SpringBrowserlessTest {
     }
 
     private JoinCode anExercise() {
-        return exercises.createFrom(scenarios.create(new ScenarioContent("Warehouse fire",
+        return joinCodeOf(exercises.createFrom(scenarios.create(new ScenarioContent("Warehouse fire",
                 PreparedLanguage.SWEDISH, Optional.empty(), List.of(
                 new ScenarioPosition("Officer", Optional.of("RVSP911")),
                 new ScenarioPosition("Pump operator", Optional.of("RVS911K")),
-                new ScenarioPosition("Safety officer", Optional.empty()))), ANNA));
+                new ScenarioPosition("Safety officer", Optional.empty()))), ANNA), ANNA));
     }
 }

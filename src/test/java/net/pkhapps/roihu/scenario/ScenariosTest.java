@@ -18,6 +18,7 @@ import java.util.concurrent.CyclicBarrier;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
+import static net.pkhapps.roihu.TestExercises.joinCodeOf;
 import static net.pkhapps.roihu.TestOfficers.ANNA;
 import static net.pkhapps.roihu.TestOfficers.BERTIL;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -172,7 +173,7 @@ class ScenariosTest {
     @Test
     void aScenarioThatHasAnExerciseIsNotDeleted(@Autowired Exercises exercises) {
         var id = scenarios.create(warehouseFire(), ANNA);
-        exercises.createFrom(id);
+        joinCodeOf(exercises.createFrom(id, ANNA));
 
         assertThat(scenarios.delete(id)).isInstanceOf(DeleteResult.HasExercises.class);
 
@@ -247,7 +248,7 @@ class ScenariosTest {
     void editingAScenarioLeavesItsExistingExercisesAsTheyWere(@Autowired Exercises exercises,
                                                               @Autowired CrewJoining crewJoining) {
         var id = scenarios.create(warehouseFire(), ANNA);
-        var joinCode = exercises.createFrom(id);
+        var joinCode = joinCodeOf(exercises.createFrom(id, ANNA));
 
         scenarios.save(id, versionOf(id), new ScenarioContent("Warehouse fire", PreparedLanguage.SWEDISH, Optional.empty(), List.of(
                 new ScenarioPosition("Incident commander", Optional.of("RVS91")))), BERTIL);

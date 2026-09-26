@@ -27,3 +27,12 @@ vaadin-side-nav:has(vaadin-side-nav-item:only-child)::after {
     min-width: 100%;
     white-space: normal;
 }
+/* Read aloud to the crew, so large and in two groups. */
+.join-code {
+    font-family: ui-monospace, monospace;
+    font-size: clamp(2.5rem, 10vw, 5rem);
+    font-weight: var(--aura-font-weight-semibold);
+    letter-spacing: 0.1em;
+    line-height: 1.2;
+    margin-block: 0.25em;
+}

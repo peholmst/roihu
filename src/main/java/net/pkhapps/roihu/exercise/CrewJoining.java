@@ -51,7 +51,7 @@ public class CrewJoining {
                 .where(EXERCISE.JOIN_CODE.eq(joinCode.value()))
                 .and(EXERCISE.STATE.ne(STORED_ENDED))
                 .fetchOptional(record -> new JoinableExercise(
-                        toExerciseState(record.get(EXERCISE.STATE)),
+                        ExerciseStates.of(record.get(EXERCISE.STATE)),
                         PreparedLanguage.fromCode(record.get(EXERCISE.PREPARED_LANGUAGE).getLiteral()),
                         db.select(EXERCISE_POSITION.ID, EXERCISE_POSITION.NAME, EXERCISE_POSITION.CALL_SIGN,
                                         HOLDING.EXERCISE_POSITION_ID.isNotNull())
@@ -165,14 +165,6 @@ public class CrewJoining {
                         new ExercisePosition(new PositionId(record.get(EXERCISE_POSITION.ID)),
                                 record.get(EXERCISE_POSITION.NAME),
                                 Optional.ofNullable(record.get(EXERCISE_POSITION.CALL_SIGN)), true),
-                        toExerciseState(record.get(EXERCISE.STATE))));
-    }
-
-    private static ExerciseState toExerciseState(net.pkhapps.roihu.db.generated.enums.ExerciseState stored) {
-        return switch (stored) {
-            case setup -> ExerciseState.SETUP;
-            case running -> ExerciseState.RUNNING;
-            case ended -> ExerciseState.ENDED;
-        };
+                        ExerciseStates.of(record.get(EXERCISE.STATE))));
     }
 }

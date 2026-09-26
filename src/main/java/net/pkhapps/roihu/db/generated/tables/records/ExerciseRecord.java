@@ -4,6 +4,7 @@
 package net.pkhapps.roihu.db.generated.tables.records;
 
 
+import java.time.OffsetDateTime;
 import java.util.UUID;
 
 import net.pkhapps.roihu.db.generated.enums.ExerciseState;
@@ -92,6 +93,76 @@ public class ExerciseRecord extends UpdatableRecordImpl<ExerciseRecord> {
         return (PreparedLanguage) get(4);
     }
 
+    /**
+     * Setter for <code>public.exercise.scenario_name</code>.
+     */
+    public void setScenarioName(String value) {
+        set(5, value);
+    }
+
+    /**
+     * Getter for <code>public.exercise.scenario_name</code>.
+     */
+    public String getScenarioName() {
+        return (String) get(5);
+    }
+
+    /**
+     * Setter for <code>public.exercise.created_by</code>.
+     */
+    public void setCreatedBy(String value) {
+        set(6, value);
+    }
+
+    /**
+     * Getter for <code>public.exercise.created_by</code>.
+     */
+    public String getCreatedBy() {
+        return (String) get(6);
+    }
+
+    /**
+     * Setter for <code>public.exercise.created_at</code>.
+     */
+    public void setCreatedAt(OffsetDateTime value) {
+        set(7, value);
+    }
+
+    /**
+     * Getter for <code>public.exercise.created_at</code>.
+     */
+    public OffsetDateTime getCreatedAt() {
+        return (OffsetDateTime) get(7);
+    }
+
+    /**
+     * Setter for <code>public.exercise.started_at</code>.
+     */
+    public void setStartedAt(OffsetDateTime value) {
+        set(8, value);
+    }
+
+    /**
+     * Getter for <code>public.exercise.started_at</code>.
+     */
+    public OffsetDateTime getStartedAt() {
+        return (OffsetDateTime) get(8);
+    }
+
+    /**
+     * Setter for <code>public.exercise.ended_at</code>.
+     */
+    public void setEndedAt(OffsetDateTime value) {
+        set(9, value);
+    }
+
+    /**
+     * Getter for <code>public.exercise.ended_at</code>.
+     */
+    public OffsetDateTime getEndedAt() {
+        return (OffsetDateTime) get(9);
+    }
+
     // -------------------------------------------------------------------------
     // Primary key information
     // -------------------------------------------------------------------------
@@ -115,7 +186,7 @@ public class ExerciseRecord extends UpdatableRecordImpl<ExerciseRecord> {
     /**
      * Create a detached, initialised ExerciseRecord
      */
-    public ExerciseRecord(UUID id, UUID scenarioId, ExerciseState state, String joinCode, PreparedLanguage preparedLanguage) {
+    public ExerciseRecord(UUID id, UUID scenarioId, ExerciseState state, String joinCode, PreparedLanguage preparedLanguage, String scenarioName, String createdBy, OffsetDateTime createdAt, OffsetDateTime startedAt, OffsetDateTime endedAt) {
         super(Exercise.EXERCISE);
 
         setId(id);
@@ -123,6 +194,11 @@ public class ExerciseRecord extends UpdatableRecordImpl<ExerciseRecord> {
         setState(state);
         setJoinCode(joinCode);
         setPreparedLanguage(preparedLanguage);
+        setScenarioName(scenarioName);
+        setCreatedBy(createdBy);
+        setCreatedAt(createdAt);
+        setStartedAt(startedAt);
+        setEndedAt(endedAt);
         resetTouchedOnNotNull();
     }
 }

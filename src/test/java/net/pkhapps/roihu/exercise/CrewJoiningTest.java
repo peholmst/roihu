@@ -21,6 +21,7 @@ import java.util.concurrent.CyclicBarrier;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import static net.pkhapps.roihu.TestExercises.joinCodeOf;
 import static net.pkhapps.roihu.TestOfficers.ANNA;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.tuple;
@@ -45,7 +46,7 @@ class CrewJoiningTest {
                 new ScenarioPosition("Officer", Optional.of("RVSP911")),
                 new ScenarioPosition("Pump operator", Optional.of("RVS911K")),
                 new ScenarioPosition("Safety officer", Optional.empty()))), ANNA);
-        var joinCode = exercises.createFrom(scenario);
+        var joinCode = joinCodeOf(exercises.createFrom(scenario, ANNA));
 
         var exercise = crewJoining.findExercise(joinCode.toString()).orElseThrow();
 
@@ -61,7 +62,7 @@ class CrewJoiningTest {
 
     @Test
     void theJoinCodeIsFoundHoweverItIsTyped() {
-        var joinCode = exercises.createFrom(aScenario()).toString();
+        var joinCode = joinCodeOf(exercises.createFrom(aScenario(), ANNA)).toString();
 
         assertThat(crewJoining.findExercise(joinCode.toLowerCase(Locale.ROOT))).isPresent();
         assertThat(crewJoining.findExercise(joinCode.replace("-", ""))).isPresent();
@@ -70,7 +71,7 @@ class CrewJoiningTest {
 
     @Test
     void unknownAndMalformedCodesFindNothing() {
-        exercises.createFrom(aScenario());
+        joinCodeOf(exercises.createFrom(aScenario(), ANNA));
 
         assertThat(crewJoining.findExercise("ZZZZ-ZZZZ")).isEmpty();
         assertThat(crewJoining.findExercise("K7QX")).isEmpty();
@@ -81,7 +82,7 @@ class CrewJoiningTest {
 
     @Test
     void anEndedExerciseAdmitsNobody() {
-        var joinCode = exercises.createFrom(aScenario());
+        var joinCode = joinCodeOf(exercises.createFrom(aScenario(), ANNA));
 
         exercises.end(joinCode);
 
@@ -90,7 +91,7 @@ class CrewJoiningTest {
 
     @Test
     void aJoinCodeIsEightCodeCharactersInTwoGroups() {
-        var joinCode = exercises.createFrom(aScenario());
+        var joinCode = joinCodeOf(exercises.createFrom(aScenario(), ANNA));
 
         assertThat(joinCode.toString()).matches("[0-9A-HJKMNP-TV-Z]{4}-[0-9A-HJKMNP-TV-Z]{4}");
         assertThat(JoinCode.parse(joinCode.toString())).contains(joinCode);
@@ -101,8 +102,8 @@ class CrewJoiningTest {
         var scenario = aScenario();
         var sameSeedEveryTime = new Exercises(db, changes, () -> new Random(347));
 
-        var first = sameSeedEveryTime.createFrom(scenario);
-        var second = sameSeedEveryTime.createFrom(scenario);
+        var first = joinCodeOf(sameSeedEveryTime.createFrom(scenario, ANNA));
+        var second = joinCodeOf(sameSeedEveryTime.createFrom(scenario, ANNA));
 
         assertThat(second).isNotEqualTo(first);
         assertThat(crewJoining.findExercise(first.toString())).isPresent();
@@ -111,7 +112,7 @@ class CrewJoiningTest {
 
     @Test
     void takingAFreePositionGivesATokenThatFindsItAgain() {
-        var joinCode = exercises.createFrom(aScenario()).toString();
+        var joinCode = joinCodeOf(exercises.createFrom(aScenario(), ANNA)).toString();
         var officer = crewJoining.findExercise(joinCode).orElseThrow().positions().getFirst();
 
         var result = crewJoining.take(joinCode, officer.id());
@@ -125,7 +126,7 @@ class CrewJoiningTest {
 
     @Test
     void theExerciseShowsWhichPositionsAreTaken() {
-        var joinCode = exercises.createFrom(twoPositions()).toString();
+        var joinCode = joinCodeOf(exercises.createFrom(twoPositions(), ANNA)).toString();
         var officer = crewJoining.findExercise(joinCode).orElseThrow().positions().getFirst();
 
         crewJoining.take(joinCode, officer.id());
@@ -137,7 +138,7 @@ class CrewJoiningTest {
 
     @Test
     void takingATakenPositionReportsItAndLeavesTheHolderInPlace() {
-        var joinCode = exercises.createFrom(aScenario()).toString();
+        var joinCode = joinCodeOf(exercises.createFrom(aScenario(), ANNA)).toString();
         var officer = crewJoining.findExercise(joinCode).orElseThrow().positions().getFirst();
         var holder = ((TakeResult.Taken) crewJoining.take(joinCode, officer.id())).token();
 
@@ -150,7 +151,7 @@ class CrewJoiningTest {
     @Test
     void crewMembersTakingOnePositionAtOnceLeaveExactlyOneHolderAndTheOthersAreOfferedATakeOver()
             throws Exception {
-        var joinCode = exercises.createFrom(aScenario()).toString();
+        var joinCode = joinCodeOf(exercises.createFrom(aScenario(), ANNA)).toString();
         var officer = crewJoining.findExercise(joinCode).orElseThrow().positions().getFirst();
         var crewMembers = 8;
         var start = new CyclicBarrier(crewMembers);
@@ -174,7 +175,7 @@ class CrewJoiningTest {
 
     @Test
     void takingOverAHeldPositionGivesANewTokenAndThePreviousHolderNoLongerHoldsIt() {
-        var joinCode = exercises.createFrom(aScenario()).toString();
+        var joinCode = joinCodeOf(exercises.createFrom(aScenario(), ANNA)).toString();
         var officer = crewJoining.findExercise(joinCode).orElseThrow().positions().getFirst();
         var previous = ((TakeResult.Taken) crewJoining.take(joinCode, officer.id())).token();
 
@@ -190,7 +191,7 @@ class CrewJoiningTest {
 
     @Test
     void changingPositionFreesItAndTheTokenNoLongerHoldsAnything() {
-        var joinCode = exercises.createFrom(aScenario()).toString();
+        var joinCode = joinCodeOf(exercises.createFrom(aScenario(), ANNA)).toString();
         var officer = crewJoining.findExercise(joinCode).orElseThrow().positions().getFirst();
         var holder = ((TakeResult.Taken) crewJoining.take(joinCode, officer.id())).token();
 
@@ -202,7 +203,7 @@ class CrewJoiningTest {
 
     @Test
     void onceTheExerciseHasEndedNoPositionChangesHandsButHoldersKeepTheirs() {
-        var joinCode = exercises.createFrom(twoPositions());
+        var joinCode = joinCodeOf(exercises.createFrom(twoPositions(), ANNA));
         var positions = crewJoining.findExercise(joinCode.toString()).orElseThrow().positions();
         var holder = ((TakeResult.Taken) crewJoining.take(joinCode.toString(), positions.get(0).id())).token();
 
@@ -219,8 +220,8 @@ class CrewJoiningTest {
 
     @Test
     void aPositionCanOnlyBeTakenWithTheCodeOfItsOwnExercise() {
-        var ours = exercises.createFrom(aScenario()).toString();
-        var theirs = exercises.createFrom(aScenario()).toString();
+        var ours = joinCodeOf(exercises.createFrom(aScenario(), ANNA)).toString();
+        var theirs = joinCodeOf(exercises.createFrom(aScenario(), ANNA)).toString();
         var theirOfficer = crewJoining.findExercise(theirs).orElseThrow().positions().getFirst();
 
         assertThat(crewJoining.take(ours, theirOfficer.id())).isInstanceOf(TakeResult.NotJoinable.class);
@@ -231,8 +232,8 @@ class CrewJoiningTest {
 
     @Test
     void followersOfAnExerciseHearOfEveryChangeToItAndOnlyToIt() {
-        var joinCode = exercises.createFrom(twoPositions());
-        var other = exercises.createFrom(aScenario());
+        var joinCode = joinCodeOf(exercises.createFrom(twoPositions(), ANNA));
+        var other = joinCodeOf(exercises.createFrom(aScenario(), ANNA));
         var positions = crewJoining.findExercise(joinCode.toString()).orElseThrow().positions();
         var heard = new AtomicInteger();
         var heardOfOther = new AtomicInteger();
@@ -251,7 +252,7 @@ class CrewJoiningTest {
 
     @Test
     void aFollowerThatFailsNeitherUndoesTheChangeNorKeepsItFromTheOthers() {
-        var joinCode = exercises.createFrom(aScenario());
+        var joinCode = joinCodeOf(exercises.createFrom(aScenario(), ANNA));
         var officer = crewJoining.findExercise(joinCode.toString()).orElseThrow().positions().getFirst();
         var heard = new AtomicInteger();
         crewJoining.subscribe(joinCode, () -> {
@@ -267,7 +268,7 @@ class CrewJoiningTest {
 
     @Test
     void aCancelledSubscriptionHearsNothingMore() {
-        var joinCode = exercises.createFrom(aScenario());
+        var joinCode = joinCodeOf(exercises.createFrom(aScenario(), ANNA));
         var officer = crewJoining.findExercise(joinCode.toString()).orElseThrow().positions().getFirst();
         var heard = new AtomicInteger();
         crewJoining.subscribe(joinCode, heard::incrementAndGet).cancel();
