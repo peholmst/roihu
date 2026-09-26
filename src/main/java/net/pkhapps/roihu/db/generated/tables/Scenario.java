@@ -99,6 +99,11 @@ public class Scenario extends TableImpl<ScenarioRecord> {
      */
     public final TableField<ScenarioRecord, OffsetDateTime> LAST_CHANGED_AT = createField(DSL.name("last_changed_at"), SQLDataType.TIMESTAMPWITHTIMEZONE(6).nullable(false).defaultValue(DSL.field(DSL.raw("now()"), SQLDataType.TIMESTAMPWITHTIMEZONE)), this, "");
 
+    /**
+     * The column <code>public.scenario.version</code>.
+     */
+    public final TableField<ScenarioRecord, Integer> VERSION = createField(DSL.name("version"), SQLDataType.INTEGER.nullable(false).defaultValue(DSL.field(DSL.raw("0"), SQLDataType.INTEGER)), this, "");
+
     private Scenario(Name alias, Table<ScenarioRecord> aliased) {
         this(alias, aliased, (Field<?>[]) null, null);
     }

@@ -3,6 +3,7 @@ package net.pkhapps.roihu.scenario.ui;
 import com.vaadin.flow.component.Composite;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
+import com.vaadin.flow.component.confirmdialog.ConfirmDialog;
 import com.vaadin.flow.component.grid.Grid;
 import com.vaadin.flow.component.grid.dataview.GridListDataView;
 import com.vaadin.flow.component.grid.dnd.GridDropLocation;
@@ -23,7 +24,9 @@ import net.pkhapps.roihu.base.i18n.InterfaceLanguage;
 import net.pkhapps.roihu.base.security.Roles;
 import net.pkhapps.roihu.base.security.SignedInOfficer;
 import net.pkhapps.roihu.base.ui.ViewTitle;
+import net.pkhapps.roihu.scenario.Change;
 import net.pkhapps.roihu.scenario.PreparedLanguage;
+import net.pkhapps.roihu.scenario.SaveResult;
 import net.pkhapps.roihu.scenario.Scenario;
 import net.pkhapps.roihu.scenario.ScenarioContent;
 import net.pkhapps.roihu.scenario.ScenarioId;
@@ -57,6 +60,8 @@ public class ScenarioEditorView extends Composite<VerticalLayout> implements Bef
     private @Nullable PositionRow dragged;
     /** The scenario being edited, or nothing while a new one is being written. */
     private @Nullable ScenarioId editing;
+    /** The version of the scenario being edited that the form was filled from. */
+    private int editingVersion;
 
     ScenarioEditorView(Scenarios scenarios, SignedInOfficer officer) {
         this.scenarios = scenarios;
@@ -120,6 +125,7 @@ public class ScenarioEditorView extends Composite<VerticalLayout> implements Bef
 
     private void show(Scenario scenario) {
         editing = scenario.id();
+        editingVersion = scenario.version();
         fill(scenario.content());
         provenance.setText(getTranslation("editor.provenance",
                 Changes.describe(scenario.created(), getLocale()),
@@ -205,9 +211,37 @@ public class ScenarioEditorView extends Composite<VerticalLayout> implements Bef
                 rows.stream().map(PositionRow::toPosition).toList());
         if (editing == null) {
             scenarios.create(content, officer.get());
-        } else {
-            scenarios.save(editing, content, officer.get());
+            showLibrary();
+            return;
         }
+        switch (scenarios.save(editing, editingVersion, content, officer.get())) {
+            case SaveResult.Saved saved -> showLibrary();
+            case SaveResult.Conflict conflict -> offerReload(conflict.lastChanged());
+        }
+    }
+
+    /**
+     * Another officer saved the scenario after this form was filled. Their work stays; this
+     * officer may reload it, losing their own edits, or keep editing to copy them out first.
+     */
+    private void offerReload(Change lastChanged) {
+        var dialog = new ConfirmDialog();
+        dialog.setHeader(getTranslation("editor.conflict.title"));
+        dialog.setText(getTranslation("editor.conflict.text", lastChanged.by().email(),
+                Changes.at(lastChanged, getLocale())));
+        dialog.setConfirmText(getTranslation("editor.conflict.reload"));
+        dialog.setCancelable(true);
+        dialog.setCancelText(getTranslation("editor.conflict.keep-editing"));
+        dialog.addConfirmListener(event -> reload());
+        dialog.open();
+    }
+
+    private void reload() {
+        Optional.ofNullable(editing).flatMap(scenarios::get)
+                .ifPresentOrElse(this::show, this::showLibrary);
+    }
+
+    private void showLibrary() {
         getUI().ifPresent(ui -> ui.navigate(ScenarioLibraryView.class));
     }
 

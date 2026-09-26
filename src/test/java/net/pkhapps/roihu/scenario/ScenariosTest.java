@@ -8,8 +8,12 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.CyclicBarrier;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 
 import static net.pkhapps.roihu.TestOfficers.ANNA;
 import static net.pkhapps.roihu.TestOfficers.BERTIL;
@@ -60,7 +64,7 @@ class ScenariosTest {
                 new ScenarioPosition("Officer", Optional.of("RVSP911")),
                 new ScenarioPosition("Water supply", Optional.of("RVS903"))));
 
-        scenarios.save(id, edited, BERTIL);
+        scenarios.save(id, versionOf(id), edited, BERTIL);
 
         var saved = scenarios.get(id).orElseThrow();
         assertThat(saved.content()).isEqualTo(edited);
@@ -70,11 +74,60 @@ class ScenariosTest {
     }
 
     @Test
+    void aSaveFromAVersionSomeoneHasSinceChangedIsRefusedNamingWhoChangedIt() {
+        var id = scenarios.create(warehouseFire(), ANNA);
+        var openedByAnna = scenarios.get(id).orElseThrow();
+        var openedByBertil = scenarios.get(id).orElseThrow();
+        var bertilsEdit = new ScenarioContent("Warehouse fire, revised", PreparedLanguage.FINNISH, Optional.empty(),
+                List.of(new ScenarioPosition("Officer", Optional.of("RVSP911"))));
+        assertThat(scenarios.save(id, openedByBertil.version(), bertilsEdit, BERTIL))
+                .isInstanceOf(SaveResult.Saved.class);
+
+        var result = scenarios.save(id, openedByAnna.version(), new ScenarioContent("Warehouse fire at night",
+                PreparedLanguage.FINNISH, Optional.empty(), List.of()), ANNA);
+
+        var current = scenarios.get(id).orElseThrow();
+        assertThat(result).isEqualTo(new SaveResult.Conflict(current.lastChanged()));
+        assertThat(current.lastChanged().by()).isEqualTo(BERTIL);
+        assertThat(current.content()).isEqualTo(bertilsEdit);
+    }
+
+    @Test
+    void ofOfficersSavingFromOneVersionAtOnceExactlyOneSavesAndTheOthersAreRefused() throws Exception {
+        var id = scenarios.create(warehouseFire(), ANNA);
+        var version = versionOf(id);
+        var officers = 8;
+        var start = new CyclicBarrier(officers);
+
+        var results = new ArrayList<SaveResult>();
+        try (var executor = Executors.newFixedThreadPool(officers)) {
+            var saves = new ArrayList<Future<SaveResult>>();
+            for (var officer = 0; officer < officers; officer++) {
+                var content = new ScenarioContent("Warehouse fire " + officer, PreparedLanguage.FINNISH,
+                        Optional.empty(), List.of(new ScenarioPosition("Officer " + officer, Optional.empty())));
+                saves.add(executor.submit(() -> {
+                    start.await();
+                    return scenarios.save(id, version, content, BERTIL);
+                }));
+            }
+            for (var save : saves) {
+                results.add(save.get());
+            }
+        }
+
+        assertThat(results).filteredOn(SaveResult.Saved.class::isInstance).hasSize(1);
+        assertThat(results).filteredOn(SaveResult.Conflict.class::isInstance).hasSize(officers - 1);
+        var saved = scenarios.get(id).orElseThrow().content();
+        assertThat(saved.positions()).extracting(ScenarioPosition::name)
+                .containsExactly(saved.name().replace("Warehouse fire", "Officer"));
+    }
+
+    @Test
     void theLibraryListsEveryScenarioWithItsLanguagePositionCountAndLastChangeMostRecentlyChangedFirst() {
         var earlier = scenarios.create(warehouseFire(), ANNA);
         var later = scenarios.create(new ScenarioContent("Chimney fire", PreparedLanguage.SWEDISH, Optional.empty(),
                 List.of()), ANNA);
-        scenarios.save(earlier, new ScenarioContent("Warehouse fire", PreparedLanguage.FINNISH, Optional.empty(),
+        scenarios.save(earlier, versionOf(earlier), new ScenarioContent("Warehouse fire", PreparedLanguage.FINNISH, Optional.empty(),
                 List.of(
                 new ScenarioPosition("Officer", Optional.of("RVSP911")),
                 new ScenarioPosition("Pump operator", Optional.of("RVS911K")))), BERTIL);
@@ -118,7 +171,7 @@ class ScenariosTest {
         var id = scenarios.create(warehouseFire(), ANNA);
         var joinCode = exercises.createFrom(id);
 
-        scenarios.save(id, new ScenarioContent("Warehouse fire", PreparedLanguage.SWEDISH, Optional.empty(), List.of(
+        scenarios.save(id, versionOf(id), new ScenarioContent("Warehouse fire", PreparedLanguage.SWEDISH, Optional.empty(), List.of(
                 new ScenarioPosition("Incident commander", Optional.of("RVS91")))), BERTIL);
 
         var exercise = crewJoining.findExercise(joinCode.toString()).orElseThrow();
@@ -126,6 +179,10 @@ class ScenariosTest {
         assertThat(exercise.positions())
                 .extracting(ExercisePosition::name, ExercisePosition::callSign)
                 .containsExactly(tuple("Officer", Optional.of("RVSP911")));
+    }
+
+    private int versionOf(ScenarioId id) {
+        return scenarios.get(id).orElseThrow().version();
     }
 
     private static ScenarioContent warehouseFire() {

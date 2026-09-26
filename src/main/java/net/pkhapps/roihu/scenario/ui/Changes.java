@@ -17,9 +17,13 @@ final class Changes {
     }
 
     static String describe(Change change, Locale locale) {
+        return at(change, locale) + " · " + change.by().email();
+    }
+
+    static String at(Change change, Locale locale) {
         return DateTimeFormatter.ofLocalizedDateTime(FormatStyle.SHORT)
                 .withLocale(locale)
                 .withZone(ZoneId.systemDefault())
-                .format(change.at()) + " · " + change.by().email();
+                .format(change.at());
     }
 }

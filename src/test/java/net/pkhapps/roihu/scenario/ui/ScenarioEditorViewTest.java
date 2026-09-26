@@ -3,6 +3,7 @@ package net.pkhapps.roihu.scenario.ui;
 import com.vaadin.browserless.SpringBrowserlessTest;
 import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.button.Button;
+import com.vaadin.flow.component.confirmdialog.ConfirmDialog;
 import com.vaadin.flow.component.grid.Grid;
 import com.vaadin.flow.component.grid.GridTester;
 import com.vaadin.flow.component.select.Select;
@@ -12,6 +13,7 @@ import net.pkhapps.roihu.IntegrationTest;
 import net.pkhapps.roihu.WithOfficer;
 import net.pkhapps.roihu.scenario.PreparedLanguage;
 import net.pkhapps.roihu.scenario.ScenarioContent;
+import net.pkhapps.roihu.scenario.ScenarioId;
 import net.pkhapps.roihu.scenario.ScenarioPosition;
 import net.pkhapps.roihu.scenario.ScenarioSummary;
 import net.pkhapps.roihu.scenario.Scenarios;
@@ -138,6 +140,67 @@ class ScenarioEditorViewTest extends SpringBrowserlessTest {
         assertThat(saved.created().by()).isEqualTo(BERTIL);
         assertThat(saved.lastChanged().by()).isEqualTo(ANNA);
         assertThat(scenarios.list()).filteredOn(summary -> summary.name().startsWith("Barn fire")).hasSize(1);
+    }
+
+    @Test
+    void aSaveAfterAnotherOfficerChangedTheScenarioIsRefusedNamingThem() {
+        var id = scenarios.create(new ScenarioContent("Mill fire", PreparedLanguage.FINNISH, Optional.empty(),
+                List.of(new ScenarioPosition("Officer", Optional.of("RVSP911")))), ANNA);
+        navigate("scenarios/edit/" + id.value(), ScenarioEditorView.class);
+        bertilRenames(id, "Mill fire, revised");
+
+        test(field("Name")).setValue("Mill fire at night");
+        test(find(Button.class).withText("Save").single()).click();
+
+        assertThat(getCurrentView()).isInstanceOf(ScenarioEditorView.class);
+        var conflict = test(find(ConfirmDialog.class).single());
+        assertThat(conflict.getHeader()).isEqualTo("Someone else changed this scenario");
+        assertThat(conflict.getText()).contains(BERTIL.email());
+        assertThat(scenarios.get(id).orElseThrow().content().name()).isEqualTo("Mill fire, revised");
+    }
+
+    @Test
+    void reloadingAfterARefusedSaveShowsTheOtherOfficersVersionWhichThenSaves() {
+        var id = scenarios.create(new ScenarioContent("Mill fire", PreparedLanguage.FINNISH, Optional.empty(),
+                List.of(new ScenarioPosition("Officer", Optional.of("RVSP911")))), ANNA);
+        navigate("scenarios/edit/" + id.value(), ScenarioEditorView.class);
+        bertilRenames(id, "Mill fire, revised");
+        test(field("Name")).setValue("Mill fire at night");
+        test(find(Button.class).withText("Save").single()).click();
+
+        test(find(ConfirmDialog.class).single()).confirm();
+
+        assertThat(field("Name").getValue()).isEqualTo("Mill fire, revised");
+        assertThat(getCurrentView().getElement().getTextRecursively()).contains("Last changed").contains(BERTIL.email());
+        test(field("Name")).setValue("Mill fire, revised twice");
+        test(find(Button.class).withText("Save").single()).click();
+        assertThat(getCurrentView()).isInstanceOf(ScenarioLibraryView.class);
+        assertThat(scenarios.get(id).orElseThrow().lastChanged().by()).isEqualTo(ANNA);
+        assertThat(scenarios.get(id).orElseThrow().content().name()).isEqualTo("Mill fire, revised twice");
+    }
+
+    @Test
+    void keepingOnEditingAfterARefusedSaveKeepsTheEditsAndStillDoesNotOverwrite() {
+        var id = scenarios.create(new ScenarioContent("Mill fire", PreparedLanguage.FINNISH, Optional.empty(),
+                List.of(new ScenarioPosition("Officer", Optional.of("RVSP911")))), ANNA);
+        navigate("scenarios/edit/" + id.value(), ScenarioEditorView.class);
+        bertilRenames(id, "Mill fire, revised");
+        test(field("Name")).setValue("Mill fire at night");
+        test(find(Button.class).withText("Save").single()).click();
+
+        test(find(ConfirmDialog.class).single()).cancel();
+
+        assertThat(field("Name").getValue()).isEqualTo("Mill fire at night");
+        test(find(Button.class).withText("Save").single()).click();
+        assertThat(find(ConfirmDialog.class).all()).isNotEmpty();
+        assertThat(scenarios.get(id).orElseThrow().content().name()).isEqualTo("Mill fire, revised");
+    }
+
+    private void bertilRenames(ScenarioId id, String name) {
+        var current = scenarios.get(id).orElseThrow();
+        var content = current.content();
+        scenarios.save(id, current.version(), new ScenarioContent(name, content.preparedLanguage(),
+                content.description(), content.positions()), BERTIL);
     }
 
     @Test

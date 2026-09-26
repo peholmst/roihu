@@ -4,6 +4,7 @@ import net.pkhapps.roihu.base.security.Officer;
 import org.jooq.DSLContext;
 import org.jooq.impl.DSL;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
@@ -41,7 +42,11 @@ public class Scenarios {
                         new Change(new Officer(scenario.value5()), scenario.value6().toInstant())));
     }
 
-    @Transactional(readOnly = true)
+    /**
+     * Reads the scenario and its positions from one snapshot, so that a save committed between the
+     * two reads never shows as a mixture of two versions.
+     */
+    @Transactional(readOnly = true, isolation = Isolation.REPEATABLE_READ)
     public Optional<Scenario> get(ScenarioId id) {
         return db.selectFrom(SCENARIO)
                 .where(SCENARIO.ID.eq(id.value()))
@@ -56,7 +61,8 @@ public class Scenarios {
                                 .fetch(position -> new ScenarioPosition(position.value1(),
                                         Optional.ofNullable(position.value2())))),
                         new Change(new Officer(scenario.getCreatedBy()), scenario.getCreatedAt().toInstant()),
-                        new Change(new Officer(scenario.getLastChangedBy()), scenario.getLastChangedAt().toInstant())));
+                        new Change(new Officer(scenario.getLastChangedBy()), scenario.getLastChangedAt().toInstant()),
+                        scenario.getVersion()));
     }
 
     @Transactional
@@ -74,21 +80,36 @@ public class Scenarios {
     }
 
     /**
-     * Replaces everything the scenario holds with {@code content}. Exercises hold their own copy
-     * of the positions (ADR-0002), so nothing depends on the positions being replaced.
+     * Replaces everything the scenario holds with {@code content}, unless someone has changed it
+     * since {@code version}. Exercises hold their own copy of the positions (ADR-0002), so nothing
+     * depends on the positions being replaced.
      */
     @Transactional
-    public void save(ScenarioId id, ScenarioContent content, Officer officer) {
-        db.update(SCENARIO)
+    public SaveResult save(ScenarioId id, int version, ScenarioContent content, Officer officer) {
+        var saved = db.update(SCENARIO)
                 .set(SCENARIO.NAME, content.name())
                 .set(SCENARIO.PREPARED_LANGUAGE, stored(content.preparedLanguage()))
                 .set(SCENARIO.DESCRIPTION, content.description().orElse(null))
                 .set(SCENARIO.LAST_CHANGED_BY, officer.email())
                 .set(SCENARIO.LAST_CHANGED_AT, DSL.currentOffsetDateTime())
+                .set(SCENARIO.VERSION, SCENARIO.VERSION.plus(1))
                 .where(SCENARIO.ID.eq(id.value()))
+                .and(SCENARIO.VERSION.eq(version))
                 .execute();
+        if (saved == 0) {
+            return new SaveResult.Conflict(lastChanged(id));
+        }
         db.deleteFrom(SCENARIO_POSITION).where(SCENARIO_POSITION.SCENARIO_ID.eq(id.value())).execute();
         insertPositions(id.value(), content);
+        return new SaveResult.Saved();
+    }
+
+    private Change lastChanged(ScenarioId id) {
+        return db.select(SCENARIO.LAST_CHANGED_BY, SCENARIO.LAST_CHANGED_AT)
+                .from(SCENARIO)
+                .where(SCENARIO.ID.eq(id.value()))
+                .fetchOptional(scenario -> new Change(new Officer(scenario.value1()), scenario.value2().toInstant()))
+                .orElseThrow(() -> new IllegalArgumentException("No scenario " + id.value()));
     }
 
     private void insertPositions(UUID scenario, ScenarioContent content) {

@@ -134,6 +134,20 @@ public class ScenarioRecord extends UpdatableRecordImpl<ScenarioRecord> {
         return (OffsetDateTime) get(7);
     }
 
+    /**
+     * Setter for <code>public.scenario.version</code>.
+     */
+    public void setVersion(Integer value) {
+        set(8, value);
+    }
+
+    /**
+     * Getter for <code>public.scenario.version</code>.
+     */
+    public Integer getVersion() {
+        return (Integer) get(8);
+    }
+
     // -------------------------------------------------------------------------
     // Primary key information
     // -------------------------------------------------------------------------
@@ -157,7 +171,7 @@ public class ScenarioRecord extends UpdatableRecordImpl<ScenarioRecord> {
     /**
      * Create a detached, initialised ScenarioRecord
      */
-    public ScenarioRecord(UUID id, String name, PreparedLanguage preparedLanguage, String description, String createdBy, OffsetDateTime createdAt, String lastChangedBy, OffsetDateTime lastChangedAt) {
+    public ScenarioRecord(UUID id, String name, PreparedLanguage preparedLanguage, String description, String createdBy, OffsetDateTime createdAt, String lastChangedBy, OffsetDateTime lastChangedAt, Integer version) {
         super(Scenario.SCENARIO);
 
         setId(id);
@@ -168,6 +182,7 @@ public class ScenarioRecord extends UpdatableRecordImpl<ScenarioRecord> {
         setCreatedAt(createdAt);
         setLastChangedBy(lastChangedBy);
         setLastChangedAt(lastChangedAt);
+        setVersion(version);
         resetTouchedOnNotNull();
     }
 }

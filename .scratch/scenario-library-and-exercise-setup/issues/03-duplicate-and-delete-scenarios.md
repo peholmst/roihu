@@ -21,3 +21,11 @@ An officer can duplicate any scenario, copying name, prepared language, descript
 ## Blocked by
 
 - [Scenario library and editor](01-scenario-library-and-editor.md)
+
+## Comments
+
+From the review of issue 02: once scenarios can be deleted, `Scenarios.save` must report a
+scenario that is gone as a result of its own rather than throwing, including when it disappears
+between the refused update and the lookup of who last changed it. The editor should then say the
+scenario was deleted and keep the officer's draft on screen, and a reload of a deleted scenario
+should say so rather than silently returning to the library.
